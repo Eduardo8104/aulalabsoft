@@ -1,20 +1,31 @@
 import { queryOptions } from "@tanstack/react-query";
-import { getDashboard, getDeals, getReps, getRep, getCompPlans, getCurrentUser } from "./server-functions";
+import {
+  getDashboard,
+  getBooks,
+  getPublishers,
+  getCategories,
+  getMembers,
+  getLoans,
+  getCurrentUser,
+} from "./server-functions";
 
 export const dashboardQueryOptions = () =>
   queryOptions({ queryKey: ["dashboard"], queryFn: () => getDashboard() });
 
-export const dealsQueryOptions = () =>
-  queryOptions({ queryKey: ["deals"], queryFn: () => getDeals() });
+export const booksQueryOptions = () =>
+  queryOptions({ queryKey: ["books"], queryFn: () => getBooks() });
 
-export const repsQueryOptions = () =>
-  queryOptions({ queryKey: ["reps"], queryFn: () => getReps() });
+export const publishersQueryOptions = () =>
+  queryOptions({ queryKey: ["publishers"], queryFn: () => getPublishers() });
 
-export const repQueryOptions = (repId: string) =>
-  queryOptions({ queryKey: ["rep", repId], queryFn: () => getRep({ data: { repId } }) });
+export const categoriesQueryOptions = () =>
+  queryOptions({ queryKey: ["categories"], queryFn: () => getCategories() });
 
-export const compPlansQueryOptions = () =>
-  queryOptions({ queryKey: ["comp-plans"], queryFn: () => getCompPlans() });
+export const membersQueryOptions = () =>
+  queryOptions({ queryKey: ["members"], queryFn: () => getMembers() });
+
+export const loansQueryOptions = () =>
+  queryOptions({ queryKey: ["loans"], queryFn: () => getLoans() });
 
 export const currentUserQueryOptions = () =>
   queryOptions({ queryKey: ["current-user"], queryFn: () => getCurrentUser() });
