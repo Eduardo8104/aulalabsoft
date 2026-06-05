@@ -12,13 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRepsRouteImport } from './routes/_authenticated/reps'
-import { Route as AuthenticatedDealsRouteImport } from './routes/_authenticated/deals'
+import { Route as AuthenticatedPublishersRouteImport } from './routes/_authenticated/publishers'
+import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
+import { Route as AuthenticatedLoansRouteImport } from './routes/_authenticated/loans'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCompPlansRouteImport } from './routes/_authenticated/comp-plans'
-import { Route as AuthenticatedAiChatRouteImport } from './routes/_authenticated/ai-chat'
-import { Route as AuthenticatedRepsIndexRouteImport } from './routes/_authenticated/reps.index'
-import { Route as AuthenticatedRepsRepIdRouteImport } from './routes/_authenticated/reps.$repId'
+import { Route as AuthenticatedCategoriesRouteImport } from './routes/_authenticated/categories'
+import { Route as AuthenticatedBooksRouteImport } from './routes/_authenticated/books'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,14 +33,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRepsRoute = AuthenticatedRepsRouteImport.update({
-  id: '/reps',
-  path: '/reps',
+const AuthenticatedPublishersRoute = AuthenticatedPublishersRouteImport.update({
+  id: '/publishers',
+  path: '/publishers',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedDealsRoute = AuthenticatedDealsRouteImport.update({
-  id: '/deals',
-  path: '/deals',
+const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLoansRoute = AuthenticatedLoansRouteImport.update({
+  id: '/loans',
+  path: '/loans',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -49,95 +53,81 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedCompPlansRoute = AuthenticatedCompPlansRouteImport.update({
-  id: '/comp-plans',
-  path: '/comp-plans',
+const AuthenticatedCategoriesRoute = AuthenticatedCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedAiChatRoute = AuthenticatedAiChatRouteImport.update({
-  id: '/ai-chat',
-  path: '/ai-chat',
+const AuthenticatedBooksRoute = AuthenticatedBooksRouteImport.update({
+  id: '/books',
+  path: '/books',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedRepsIndexRoute = AuthenticatedRepsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedRepsRoute,
-} as any)
-const AuthenticatedRepsRepIdRoute = AuthenticatedRepsRepIdRouteImport.update({
-  id: '/$repId',
-  path: '/$repId',
-  getParentRoute: () => AuthenticatedRepsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/ai-chat': typeof AuthenticatedAiChatRoute
-  '/comp-plans': typeof AuthenticatedCompPlansRoute
+  '/books': typeof AuthenticatedBooksRoute
+  '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/deals': typeof AuthenticatedDealsRoute
-  '/reps': typeof AuthenticatedRepsRouteWithChildren
-  '/reps/$repId': typeof AuthenticatedRepsRepIdRoute
-  '/reps/': typeof AuthenticatedRepsIndexRoute
+  '/loans': typeof AuthenticatedLoansRoute
+  '/members': typeof AuthenticatedMembersRoute
+  '/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/ai-chat': typeof AuthenticatedAiChatRoute
-  '/comp-plans': typeof AuthenticatedCompPlansRoute
+  '/books': typeof AuthenticatedBooksRoute
+  '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/deals': typeof AuthenticatedDealsRoute
-  '/reps/$repId': typeof AuthenticatedRepsRepIdRoute
-  '/reps': typeof AuthenticatedRepsIndexRoute
+  '/loans': typeof AuthenticatedLoansRoute
+  '/members': typeof AuthenticatedMembersRoute
+  '/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/ai-chat': typeof AuthenticatedAiChatRoute
-  '/_authenticated/comp-plans': typeof AuthenticatedCompPlansRoute
+  '/_authenticated/books': typeof AuthenticatedBooksRoute
+  '/_authenticated/categories': typeof AuthenticatedCategoriesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/deals': typeof AuthenticatedDealsRoute
-  '/_authenticated/reps': typeof AuthenticatedRepsRouteWithChildren
-  '/_authenticated/reps/$repId': typeof AuthenticatedRepsRepIdRoute
-  '/_authenticated/reps/': typeof AuthenticatedRepsIndexRoute
+  '/_authenticated/loans': typeof AuthenticatedLoansRoute
+  '/_authenticated/members': typeof AuthenticatedMembersRoute
+  '/_authenticated/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/ai-chat'
-    | '/comp-plans'
+    | '/books'
+    | '/categories'
     | '/dashboard'
-    | '/deals'
-    | '/reps'
-    | '/reps/$repId'
-    | '/reps/'
+    | '/loans'
+    | '/members'
+    | '/publishers'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
-    | '/ai-chat'
-    | '/comp-plans'
+    | '/books'
+    | '/categories'
     | '/dashboard'
-    | '/deals'
-    | '/reps/$repId'
-    | '/reps'
+    | '/loans'
+    | '/members'
+    | '/publishers'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
-    | '/_authenticated/ai-chat'
-    | '/_authenticated/comp-plans'
+    | '/_authenticated/books'
+    | '/_authenticated/categories'
     | '/_authenticated/dashboard'
-    | '/_authenticated/deals'
-    | '/_authenticated/reps'
-    | '/_authenticated/reps/$repId'
-    | '/_authenticated/reps/'
+    | '/_authenticated/loans'
+    | '/_authenticated/members'
+    | '/_authenticated/publishers'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -169,18 +159,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/reps': {
-      id: '/_authenticated/reps'
-      path: '/reps'
-      fullPath: '/reps'
-      preLoaderRoute: typeof AuthenticatedRepsRouteImport
+    '/_authenticated/publishers': {
+      id: '/_authenticated/publishers'
+      path: '/publishers'
+      fullPath: '/publishers'
+      preLoaderRoute: typeof AuthenticatedPublishersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/deals': {
-      id: '/_authenticated/deals'
-      path: '/deals'
-      fullPath: '/deals'
-      preLoaderRoute: typeof AuthenticatedDealsRouteImport
+    '/_authenticated/members': {
+      id: '/_authenticated/members'
+      path: '/members'
+      fullPath: '/members'
+      preLoaderRoute: typeof AuthenticatedMembersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/loans': {
+      id: '/_authenticated/loans'
+      path: '/loans'
+      fullPath: '/loans'
+      preLoaderRoute: typeof AuthenticatedLoansRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -190,64 +187,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/comp-plans': {
-      id: '/_authenticated/comp-plans'
-      path: '/comp-plans'
-      fullPath: '/comp-plans'
-      preLoaderRoute: typeof AuthenticatedCompPlansRouteImport
+    '/_authenticated/categories': {
+      id: '/_authenticated/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof AuthenticatedCategoriesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/ai-chat': {
-      id: '/_authenticated/ai-chat'
-      path: '/ai-chat'
-      fullPath: '/ai-chat'
-      preLoaderRoute: typeof AuthenticatedAiChatRouteImport
+    '/_authenticated/books': {
+      id: '/_authenticated/books'
+      path: '/books'
+      fullPath: '/books'
+      preLoaderRoute: typeof AuthenticatedBooksRouteImport
       parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/reps/': {
-      id: '/_authenticated/reps/'
-      path: '/'
-      fullPath: '/reps/'
-      preLoaderRoute: typeof AuthenticatedRepsIndexRouteImport
-      parentRoute: typeof AuthenticatedRepsRoute
-    }
-    '/_authenticated/reps/$repId': {
-      id: '/_authenticated/reps/$repId'
-      path: '/$repId'
-      fullPath: '/reps/$repId'
-      preLoaderRoute: typeof AuthenticatedRepsRepIdRouteImport
-      parentRoute: typeof AuthenticatedRepsRoute
     }
   }
 }
 
-interface AuthenticatedRepsRouteChildren {
-  AuthenticatedRepsRepIdRoute: typeof AuthenticatedRepsRepIdRoute
-  AuthenticatedRepsIndexRoute: typeof AuthenticatedRepsIndexRoute
-}
-
-const AuthenticatedRepsRouteChildren: AuthenticatedRepsRouteChildren = {
-  AuthenticatedRepsRepIdRoute: AuthenticatedRepsRepIdRoute,
-  AuthenticatedRepsIndexRoute: AuthenticatedRepsIndexRoute,
-}
-
-const AuthenticatedRepsRouteWithChildren =
-  AuthenticatedRepsRoute._addFileChildren(AuthenticatedRepsRouteChildren)
-
 interface AuthenticatedRouteChildren {
-  AuthenticatedAiChatRoute: typeof AuthenticatedAiChatRoute
-  AuthenticatedCompPlansRoute: typeof AuthenticatedCompPlansRoute
+  AuthenticatedBooksRoute: typeof AuthenticatedBooksRoute
+  AuthenticatedCategoriesRoute: typeof AuthenticatedCategoriesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedDealsRoute: typeof AuthenticatedDealsRoute
-  AuthenticatedRepsRoute: typeof AuthenticatedRepsRouteWithChildren
+  AuthenticatedLoansRoute: typeof AuthenticatedLoansRoute
+  AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
+  AuthenticatedPublishersRoute: typeof AuthenticatedPublishersRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAiChatRoute: AuthenticatedAiChatRoute,
-  AuthenticatedCompPlansRoute: AuthenticatedCompPlansRoute,
+  AuthenticatedBooksRoute: AuthenticatedBooksRoute,
+  AuthenticatedCategoriesRoute: AuthenticatedCategoriesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedDealsRoute: AuthenticatedDealsRoute,
-  AuthenticatedRepsRoute: AuthenticatedRepsRouteWithChildren,
+  AuthenticatedLoansRoute: AuthenticatedLoansRoute,
+  AuthenticatedMembersRoute: AuthenticatedMembersRoute,
+  AuthenticatedPublishersRoute: AuthenticatedPublishersRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
