@@ -14,160 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_log: {
-        Row: {
-          action: string
-          changes: Json | null
-          created_at: string
-          id: string
-          record_id: string
-          table_name: string
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          changes?: Json | null
-          created_at?: string
-          id?: string
-          record_id: string
-          table_name: string
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          changes?: Json | null
-          created_at?: string
-          id?: string
-          record_id?: string
-          table_name?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      comp_plans: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          effective_date: string
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          effective_date: string
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          effective_date?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      comp_tiers: {
-        Row: {
-          commission_rate: number
-          comp_plan_id: string
-          created_at: string
-          id: string
-          max_deal_size: number | null
-          min_deal_size: number
-          tier_name: string
-        }
-        Insert: {
-          commission_rate: number
-          comp_plan_id: string
-          created_at?: string
-          id?: string
-          max_deal_size?: number | null
-          min_deal_size?: number
-          tier_name: string
-        }
-        Update: {
-          commission_rate?: number
-          comp_plan_id?: string
-          created_at?: string
-          id?: string
-          max_deal_size?: number | null
-          min_deal_size?: number
-          tier_name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "comp_tiers_comp_plan_id_fkey"
-            columns: ["comp_plan_id"]
-            isOneToOne: false
-            referencedRelation: "comp_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      deals: {
-        Row: {
-          close_date: string
-          commission_amount: number
-          created_at: string
-          created_by: string | null
-          deal_size: number
-          deal_type: string
-          deleted_at: string | null
-          id: string
-          notes: string | null
-          rep_id: string
-          status: Database["public"]["Enums"]["deal_status"]
-          tier_applied: string | null
-          updated_at: string
-        }
-        Insert: {
-          close_date: string
-          commission_amount?: number
-          created_at?: string
-          created_by?: string | null
-          deal_size: number
-          deal_type: string
-          deleted_at?: string | null
-          id?: string
-          notes?: string | null
-          rep_id: string
-          status?: Database["public"]["Enums"]["deal_status"]
-          tier_applied?: string | null
-          updated_at?: string
-        }
-        Update: {
-          close_date?: string
-          commission_amount?: number
-          created_at?: string
-          created_by?: string | null
-          deal_size?: number
-          deal_type?: string
-          deleted_at?: string | null
-          id?: string
-          notes?: string | null
-          rep_id?: string
-          status?: Database["public"]["Enums"]["deal_status"]
-          tier_applied?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deals_rep_id_fkey"
-            columns: ["rep_id"]
-            isOneToOne: false
-            referencedRelation: "reps"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           created_at: string
@@ -189,72 +35,6 @@ export type Database = {
           id?: string
           name?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      quota_tiers: {
-        Row: {
-          color: string
-          created_at: string
-          id: string
-          max_attainment: number | null
-          min_attainment: number
-          rate_multiplier: number
-          tier_name: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          id?: string
-          max_attainment?: number | null
-          min_attainment?: number
-          rate_multiplier?: number
-          tier_name: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          id?: string
-          max_attainment?: number | null
-          min_attainment?: number
-          rate_multiplier?: number
-          tier_name?: string
-        }
-        Relationships: []
-      }
-      reps: {
-        Row: {
-          created_at: string
-          email: string | null
-          id: string
-          name: string
-          quota_period: Database["public"]["Enums"]["quota_period"]
-          quota_target: number
-          team: string
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          id?: string
-          name: string
-          quota_period?: Database["public"]["Enums"]["quota_period"]
-          quota_target?: number
-          team?: string
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          id?: string
-          name?: string
-          quota_period?: Database["public"]["Enums"]["quota_period"]
-          quota_target?: number
-          team?: string
-          updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -290,9 +70,8 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "rep"
-      deal_status: "closed" | "open"
-      quota_period: "month" | "quarter" | "year"
+      app_role: "admin" | "rep" | "librarian"
+      loan_status: "active" | "overdue" | "returned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,9 +199,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "rep"],
-      deal_status: ["closed", "open"],
-      quota_period: ["month", "quarter", "year"],
+      app_role: ["admin", "rep", "librarian"],
+      loan_status: ["active", "overdue", "returned"],
     },
   },
 } as const
