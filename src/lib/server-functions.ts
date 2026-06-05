@@ -2,394 +2,367 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-// ── Reps ──────────────────────────────────────────────────────
-
-export const getReps = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-
-    const [{ data: reps, error: repsErr }, { data: deals, error: dealsErr }, { data: quotaTiers, error: qtErr }] = await Promise.all([
-      supabase.from("reps").select("*").order("name"),
-      supabase.from("deals").select("*").is("deleted_at", null),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-    ]);
-
-    if (repsErr) throw new Error(repsErr.message);
-    if (dealsErr) throw new Error(dealsErr.message);
-    if (qtErr) throw new Error(qtErr.message);
-
-    return (reps ?? []).map((rep) => {
-      const repDeals = (deals ?? []).filter((d) => d.rep_id === rep.id && d.status === "closed");
-      const totalRevenue = repDeals.reduce((s, d) => s + Number(d.deal_size), 0);
-      const totalCommission = repDeals.reduce((s, d) => s + Number(d.commission_amount), 0);
-      const attainment = rep.quota_target > 0 ? (totalRevenue / Number(rep.quota_target)) * 100 : 0;
-      const tiers = quotaTiers ?? [];
-      const matching = tiers.filter((t) => attainment >= Number(t.min_attainment));
-      const quotaTier = matching[matching.length - 1] ?? tiers[0];
-
-      return {
-        ...rep,
-        totalRevenue,
-        totalCommission,
-        attainment,
-        dealCount: repDeals.length,
-        quotaTier: quotaTier ?? { id: "", tier_name: "Unknown", min_attainment: 0, max_attainment: null, rate_multiplier: 1, color: "primary", created_at: "" },
-      };
-    });
-  });
-
-export const getRep = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ repId: z.string().uuid() }))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-
-    const [{ data: rep, error: repErr }, { data: deals, error: dealsErr }, { data: quotaTiers, error: qtErr }] = await Promise.all([
-      supabase.from("reps").select("*").eq("id", data.repId).single(),
-      supabase.from("deals").select("*").eq("rep_id", data.repId).is("deleted_at", null).order("close_date", { ascending: false }),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-    ]);
-
-    if (repErr) throw new Error(repErr.message);
-    if (dealsErr) throw new Error(dealsErr.message);
-    if (qtErr) throw new Error(qtErr.message);
-
-    const closedDeals = (deals ?? []).filter((d) => d.status === "closed");
-    const totalRevenue = closedDeals.reduce((s, d) => s + Number(d.deal_size), 0);
-    const totalCommission = closedDeals.reduce((s, d) => s + Number(d.commission_amount), 0);
-    const attainment = rep.quota_target > 0 ? (totalRevenue / Number(rep.quota_target)) * 100 : 0;
-    const tiers = quotaTiers ?? [];
-    const matching = tiers.filter((t) => attainment >= Number(t.min_attainment));
-    const quotaTier = matching[matching.length - 1] ?? tiers[0];
-
-    return {
-      rep,
-      deals: deals ?? [],
-      totalRevenue,
-      totalCommission,
-      attainment,
-      quotaTier: quotaTier ?? { id: "", tier_name: "Unknown", min_attainment: 0, max_attainment: null, rate_multiplier: 1, color: "primary", created_at: "" },
-      quotaTiers: tiers,
-    };
-  });
-
-// ── Deals ──────────────────────────────────────────────────────
-
-export const getDeals = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-
-    const [{ data: deals, error: dealsErr }, { data: reps, error: repsErr }] = await Promise.all([
-      supabase.from("deals").select("*").is("deleted_at", null).order("close_date", { ascending: false }),
-      supabase.from("reps").select("id, name"),
-    ]);
-
-    if (dealsErr) throw new Error(dealsErr.message);
-    if (repsErr) throw new Error(repsErr.message);
-
-    return { deals: deals ?? [], reps: reps ?? [] };
-  });
-
-export const createDeal = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      repId: z.string().uuid(),
-      dealSize: z.number().positive().max(999999999),
-      closeDate: z.string().min(1).max(20),
-      dealType: z.string().min(1).max(100),
-      notes: z.string().max(5000).optional(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-
-    // Fetch all needed data in parallel
-    const [planRes, repRes, existingDealsRes, quotaTiersRes] = await Promise.all([
-      supabase.from("comp_plans").select("id").eq("is_active", true).single(),
-      supabase.from("reps").select("quota_target").eq("id", data.repId).single(),
-      supabase.from("deals").select("deal_size").eq("rep_id", data.repId).eq("status", "closed").is("deleted_at", null),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-    ]);
-
-    let tierApplied = "Unknown";
-    let commissionRate = 0;
-
-    if (planRes.data) {
-      const { data: tiers } = await supabase
-        .from("comp_tiers")
-        .select("*")
-        .eq("comp_plan_id", planRes.data.id)
-        .order("min_deal_size");
-
-      const matchedTier = (tiers ?? []).find(
-        (t) => data.dealSize >= Number(t.min_deal_size) && (t.max_deal_size === null || data.dealSize < Number(t.max_deal_size))
-      );
-      if (matchedTier) {
-        tierApplied = matchedTier.tier_name;
-        commissionRate = Number(matchedTier.commission_rate);
-      }
-    }
-
-    const rep = repRes.data;
-    const currentRevenue = (existingDealsRes.data ?? []).reduce((s, d) => s + Number(d.deal_size), 0);
-    const attainment = rep && Number(rep.quota_target) > 0 ? ((currentRevenue + data.dealSize) / Number(rep.quota_target)) * 100 : 0;
-
-    const matching = (quotaTiersRes.data ?? []).filter((t) => attainment >= Number(t.min_attainment));
-    const quotaTier = matching[matching.length - 1];
-    const multiplier = quotaTier ? Number(quotaTier.rate_multiplier) : 1;
-
-    const commissionAmount = data.dealSize * (commissionRate / 100) * multiplier;
-
-    const { data: newDeal, error } = await supabase
-      .from("deals")
-      .insert({
-        rep_id: data.repId,
-        deal_size: data.dealSize,
-        close_date: data.closeDate,
-        deal_type: data.dealType,
-        commission_amount: commissionAmount,
-        tier_applied: tierApplied,
-        status: "closed",
-        notes: data.notes,
-        created_by: userId,
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return newDeal;
-  });
-
-// ── Dashboard ──────────────────────────────────────────────────
-
-export const getDashboard = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-
-    const [{ data: reps }, { data: deals }, { data: quotaTiers }] = await Promise.all([
-      supabase.from("reps").select("*").order("name"),
-      supabase.from("deals").select("*").is("deleted_at", null),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-    ]);
-
-    const closedDeals = (deals ?? []).filter((d) => d.status === "closed");
-    const totalCommissions = closedDeals.reduce((s, d) => s + Number(d.commission_amount), 0);
-    const totalDeals = closedDeals.length;
-    const avgDealSize = totalDeals > 0 ? closedDeals.reduce((s, d) => s + Number(d.deal_size), 0) / totalDeals : 0;
-
-    const repData = (reps ?? []).map((rep) => {
-      const repDeals = closedDeals.filter((d) => d.rep_id === rep.id);
-      const totalRevenue = repDeals.reduce((s, d) => s + Number(d.deal_size), 0);
-      const totalCommission = repDeals.reduce((s, d) => s + Number(d.commission_amount), 0);
-      const attainment = Number(rep.quota_target) > 0 ? (totalRevenue / Number(rep.quota_target)) * 100 : 0;
-      const tiers = quotaTiers ?? [];
-      const matching = tiers.filter((t) => attainment >= Number(t.min_attainment));
-      const quotaTier = matching[matching.length - 1] ?? tiers[0];
-      return { ...rep, totalRevenue, totalCommission, attainment, dealCount: repDeals.length, quotaTier };
-    });
-
-    const tierCounts = (quotaTiers ?? []).map((tier) => ({
-      ...tier,
-      count: repData.filter((r) => r.quotaTier?.id === tier.id).length,
-    }));
-
-    return { totalCommissions, totalDeals, avgDealSize, reps: repData, tierCounts, quotaTiers: quotaTiers ?? [] };
-  });
-
-// ── Comp plans ──────────────────────────────────────────────────
-
-export const getCompPlans = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-
-    const [{ data: plans }, { data: tiers }, { data: quotaTiers }, { data: reps }] = await Promise.all([
-      supabase.from("comp_plans").select("*").order("effective_date", { ascending: false }),
-      supabase.from("comp_tiers").select("*").order("min_deal_size"),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-      supabase.from("reps").select("*").order("name"),
-    ]);
-
-    const activePlan = (plans ?? []).find((p) => p.is_active);
-    const activeTiers = activePlan ? (tiers ?? []).filter((t) => t.comp_plan_id === activePlan.id) : [];
-
-    return {
-      plans: plans ?? [],
-      activePlan,
-      activeTiers,
-      quotaTiers: quotaTiers ?? [],
-      reps: reps ?? [],
-    };
-  });
-
-// ── Reps CRUD ──────────────────────────────────────────────────
-
-export const createRep = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      name: z.string().min(1).max(200),
-      email: z.string().email().optional(),
-      team: z.string().min(1).max(200).optional(),
-      quotaTarget: z.number().min(0).optional(),
-      quotaPeriod: z.enum(["month", "quarter", "year"]).optional(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-
-    const { data: newRep, error } = await supabase
-      .from("reps")
-      .insert({
-        name: data.name,
-        email: data.email ?? null,
-        team: data.team ?? "General",
-        quota_target: data.quotaTarget ?? 100000,
-        quota_period: data.quotaPeriod ?? "quarter",
-      })
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return newRep;
-  });
-
-// ── Update Deal ──────────────────────────────────────────────────
-
-export const updateDeal = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      dealId: z.string().uuid(),
-      dealSize: z.number().positive().max(999999999),
-      closeDate: z.string().min(1).max(20),
-      dealType: z.string().min(1).max(100),
-      notes: z.string().max(5000).optional(),
-      status: z.enum(["closed", "open"]),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-
-    // Get existing deal to find rep_id
-    const { data: existingDeal, error: existErr } = await supabase
-      .from("deals")
-      .select("rep_id")
-      .eq("id", data.dealId)
-      .single();
-    if (existErr) throw new Error(existErr.message);
-
-    // Fetch all needed data in parallel
-    const [planRes, repRes, otherDealsRes, quotaTiersRes] = await Promise.all([
-      supabase.from("comp_plans").select("id").eq("is_active", true).single(),
-      supabase.from("reps").select("quota_target").eq("id", existingDeal.rep_id).single(),
-      supabase.from("deals").select("deal_size").eq("rep_id", existingDeal.rep_id).eq("status", "closed").neq("id", data.dealId).is("deleted_at", null),
-      supabase.from("quota_tiers").select("*").order("min_attainment"),
-    ]);
-
-    let tierApplied = "Unknown";
-    let commissionRate = 0;
-
-    if (planRes.data) {
-      const { data: tiers } = await supabase
-        .from("comp_tiers")
-        .select("*")
-        .eq("comp_plan_id", planRes.data.id)
-        .order("min_deal_size");
-
-      const matchedTier = (tiers ?? []).find(
-        (t) => data.dealSize >= Number(t.min_deal_size) && (t.max_deal_size === null || data.dealSize < Number(t.max_deal_size))
-      );
-      if (matchedTier) {
-        tierApplied = matchedTier.tier_name;
-        commissionRate = Number(matchedTier.commission_rate);
-      }
-    }
-
-    const rep = repRes.data;
-    const otherRevenue = (otherDealsRes.data ?? []).reduce((s, d) => s + Number(d.deal_size), 0);
-    const newRevenue = data.status === "closed" ? otherRevenue + data.dealSize : otherRevenue;
-    const attainment = rep && Number(rep.quota_target) > 0 ? (newRevenue / Number(rep.quota_target)) * 100 : 0;
-
-    const matching = (quotaTiersRes.data ?? []).filter((t) => attainment >= Number(t.min_attainment));
-    const quotaTier = matching[matching.length - 1];
-    const multiplier = quotaTier ? Number(quotaTier.rate_multiplier) : 1;
-
-    const commissionAmount = data.dealSize * (commissionRate / 100) * multiplier;
-
-    const { data: updated, error } = await supabase
-      .from("deals")
-      .update({
-        deal_size: data.dealSize,
-        close_date: data.closeDate,
-        deal_type: data.dealType,
-        notes: data.notes ?? null,
-        status: data.status,
-        commission_amount: commissionAmount,
-        tier_applied: tierApplied,
-      })
-      .eq("id", data.dealId)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return updated;
-  });
-
-// ── Update Rep ──────────────────────────────────────────────────
-
-export const updateRep = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(
-    z.object({
-      repId: z.string().uuid(),
-      name: z.string().min(1).max(200),
-      email: z.string().email().optional().or(z.literal("")),
-      team: z.string().min(1).max(200),
-      quotaTarget: z.number().min(0),
-      quotaPeriod: z.enum(["month", "quarter", "year"]),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-
-    const { data: updated, error } = await supabase
-      .from("reps")
-      .update({
-        name: data.name,
-        email: data.email || null,
-        team: data.team,
-        quota_target: data.quotaTarget,
-        quota_period: data.quotaPeriod,
-      })
-      .eq("id", data.repId)
-      .select()
-      .single();
-
-    if (error) throw new Error(error.message);
-    return updated;
-  });
-
-// ── Auth helpers ──────────────────────────────────────────────────
-
+// ---------- Current user + roles ----------
 export const getCurrentUser = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-
     const [{ data: profile }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).single(),
+      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-
     return {
       userId,
       profile,
       roles: (roles ?? []).map((r) => r.role),
-      isAdmin: (roles ?? []).some((r) => r.role === "admin"),
     };
+  });
+
+// First user becomes admin (bootstrap)
+export const claimAdminIfFirst = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { count } = await supabase
+      .from("user_roles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "admin");
+    if ((count ?? 0) > 0) return { granted: false };
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
+    if (error) throw new Error(error.message);
+    return { granted: true };
+  });
+
+// ---------- Dashboard ----------
+export const getDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const today = new Date().toISOString().slice(0, 10);
+
+    const [books, members, loans, recentLoans] = await Promise.all([
+      supabase.from("books").select("id, total_quantity, borrowed_quantity"),
+      supabase.from("members").select("id", { count: "exact", head: true }),
+      supabase.from("loans").select("id, status, due_date, return_date"),
+      supabase
+        .from("loans")
+        .select("id, code, loan_date, status, members(full_name), books(title)")
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
+
+    const bookList = books.data ?? [];
+    const totalBooks = bookList.reduce((s, b) => s + (b.total_quantity ?? 0), 0);
+    const borrowedBooks = bookList.reduce((s, b) => s + (b.borrowed_quantity ?? 0), 0);
+    const availableBooks = totalBooks - borrowedBooks;
+
+    const loansList = loans.data ?? [];
+    const activeLoans = loansList.filter((l) => l.status === "active").length;
+    const overdueLoans = loansList.filter(
+      (l) => l.status !== "returned" && l.due_date < today && !l.return_date,
+    ).length;
+
+    return {
+      totalBooks,
+      availableBooks,
+      borrowedBooks,
+      totalTitles: bookList.length,
+      totalMembers: members.count ?? 0,
+      activeLoans,
+      overdueLoans,
+      totalLoans: loansList.length,
+      recentLoans: recentLoans.data ?? [],
+    };
+  });
+
+// ---------- Publishers ----------
+export const getPublishers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("publishers")
+      .select("*")
+      .order("name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const publisherInput = z.object({
+  id: z.string().optional(),
+  code: z.string().min(1).max(50),
+  name: z.string().min(1).max(255),
+  email: z.string().email().max(255).optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+});
+
+export const upsertPublisher = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => publisherInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const payload = { ...data, email: data.email || null, phone: data.phone || null };
+    const { error } = data.id
+      ? await context.supabase.from("publishers").update(payload).eq("id", data.id)
+      : await context.supabase.from("publishers").insert(payload);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deletePublisher = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("publishers").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Categories ----------
+export const getCategories = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.from("categories").select("*").order("name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const upsertCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id?: string; name: string }) =>
+    z.object({ id: z.string().optional(), name: z.string().min(1).max(100) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = data.id
+      ? await context.supabase.from("categories").update({ name: data.name }).eq("id", data.id)
+      : await context.supabase.from("categories").insert({ name: data.name });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteCategory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("categories").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Books ----------
+export const getBooks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("books")
+      .select("*, publishers(name), categories(name)")
+      .order("title");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const bookInput = z.object({
+  id: z.string().optional(),
+  code: z.string().min(1).max(50),
+  title: z.string().min(1).max(255),
+  author: z.string().min(1).max(255),
+  publisher_id: z.string().nullable().optional(),
+  category_id: z.string().nullable().optional(),
+  publication_year: z.number().int().min(0).max(9999).nullable().optional(),
+  isbn: z.string().max(50).optional().or(z.literal("")),
+  total_quantity: z.number().int().min(0).max(100000),
+  cover_url: z.string().max(2000).optional().or(z.literal("")),
+});
+
+export const upsertBook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => bookInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const payload = {
+      code: data.code,
+      title: data.title,
+      author: data.author,
+      publisher_id: data.publisher_id || null,
+      category_id: data.category_id || null,
+      publication_year: data.publication_year ?? null,
+      isbn: data.isbn || null,
+      total_quantity: data.total_quantity,
+      cover_url: data.cover_url || null,
+    };
+    if (data.id) {
+      const { data: existing } = await context.supabase
+        .from("books")
+        .select("borrowed_quantity")
+        .eq("id", data.id)
+        .single();
+      if (existing && data.total_quantity < (existing.borrowed_quantity ?? 0)) {
+        throw new Error("A quantidade total não pode ser menor que a quantidade emprestada.");
+      }
+      const { error } = await context.supabase.from("books").update(payload).eq("id", data.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await context.supabase.from("books").insert(payload);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const deleteBook = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { data: book } = await context.supabase
+      .from("books")
+      .select("borrowed_quantity")
+      .eq("id", data.id)
+      .single();
+    if (book && (book.borrowed_quantity ?? 0) > 0) {
+      throw new Error("Não é possível excluir um livro com exemplares emprestados.");
+    }
+    const { error } = await context.supabase.from("books").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Members ----------
+export const getMembers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("members")
+      .select("*")
+      .order("full_name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const memberInput = z.object({
+  id: z.string().optional(),
+  code: z.string().min(1).max(50),
+  registration: z.string().max(50).optional().or(z.literal("")),
+  full_name: z.string().min(1).max(255),
+  email: z.string().email().max(255).optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  member_role: z.string().max(50).optional().or(z.literal("")),
+  course: z.string().max(100).optional().or(z.literal("")),
+  grade: z.string().max(20).optional().or(z.literal("")),
+  cpf: z.string().max(20).optional().or(z.literal("")),
+  street: z.string().max(255).optional().or(z.literal("")),
+  number: z.string().max(20).optional().or(z.literal("")),
+  district: z.string().max(100).optional().or(z.literal("")),
+  city: z.string().max(100).optional().or(z.literal("")),
+  state: z.string().max(2).optional().or(z.literal("")),
+});
+
+export const upsertMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => memberInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (k === "id") continue;
+      payload[k] = v === "" ? null : v;
+    }
+    const { error } = data.id
+      ? await context.supabase.from("members").update(payload).eq("id", data.id)
+      : await context.supabase.from("members").insert(payload as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { count } = await context.supabase
+      .from("loans")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", data.id)
+      .neq("status", "returned");
+    if ((count ?? 0) > 0) {
+      throw new Error("Não é possível excluir um membro com empréstimos ativos.");
+    }
+    const { error } = await context.supabase.from("members").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- Loans ----------
+export const getLoans = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("loans")
+      .select("*, members(full_name, code), books(title, code)")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+const loanInput = z.object({
+  member_id: z.string().uuid(),
+  book_id: z.string().uuid(),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createLoan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => loanInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: book, error: be } = await supabase
+      .from("books")
+      .select("total_quantity, borrowed_quantity")
+      .eq("id", data.book_id)
+      .single();
+    if (be || !book) throw new Error("Livro não encontrado.");
+    if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) {
+      throw new Error("Sem exemplares disponíveis deste livro.");
+    }
+    const { error: le } = await supabase.from("loans").insert({
+      member_id: data.member_id,
+      book_id: data.book_id,
+      due_date: data.due_date,
+      status: "active",
+      created_by: userId,
+    });
+    if (le) throw new Error(le.message);
+    const { error: ue } = await supabase
+      .from("books")
+      .update({ borrowed_quantity: (book.borrowed_quantity ?? 0) + 1 })
+      .eq("id", data.book_id);
+    if (ue) throw new Error(ue.message);
+    return { ok: true };
+  });
+
+export const returnLoan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: loan, error: le } = await supabase
+      .from("loans")
+      .select("book_id, status")
+      .eq("id", data.id)
+      .single();
+    if (le || !loan) throw new Error("Empréstimo não encontrado.");
+    if (loan.status === "returned") throw new Error("Empréstimo já devolvido.");
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { error: ue } = await supabase
+      .from("loans")
+      .update({ status: "returned", return_date: today })
+      .eq("id", data.id);
+    if (ue) throw new Error(ue.message);
+
+    const { data: book } = await supabase
+      .from("books")
+      .select("borrowed_quantity")
+      .eq("id", loan.book_id)
+      .single();
+    if (book) {
+      await supabase
+        .from("books")
+        .update({ borrowed_quantity: Math.max(0, (book.borrowed_quantity ?? 0) - 1) })
+        .eq("id", loan.book_id);
+    }
+    return { ok: true };
   });

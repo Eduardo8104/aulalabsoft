@@ -1,0 +1,106 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { membersQueryOptions } from "@/lib/query-options";
+import { upsertMember, deleteMember } from "@/lib/server-functions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/members")({
+  loader: ({ context }) => context.queryClient.ensureQueryData(membersQueryOptions()),
+  component: MembersPage,
+  errorComponent: ({ error }) => <div className="p-6 text-destructive">Erro: {error.message}</div>,
+});
+
+function MembersPage() {
+  const { data } = useSuspenseQuery(membersQueryOptions());
+  const qc = useQueryClient();
+  const upsert = useServerFn(upsertMember);
+  const del = useServerFn(deleteMember);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = data.filter((m: any) => m.full_name.toLowerCase().includes(search.toLowerCase()));
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const obj: any = { id: editing?.id };
+    f.forEach((v, k) => { obj[k] = String(v); });
+    try {
+      await upsert({ data: obj });
+      toast.success("Membro salvo");
+      setOpen(false); setEditing(null);
+      qc.invalidateQueries({ queryKey: ["members"] });
+    } catch (err: any) { toast.error(err.message); }
+  }
+
+  const fields: [string, string, string?][] = [
+    ["code", "Código"], ["registration", "Matrícula"], ["full_name", "Nome completo"], ["email", "E-mail"],
+    ["phone", "Telefone"], ["member_role", "Função"], ["course", "Curso"], ["grade", "Série"], ["cpf", "CPF"],
+    ["street", "Rua"], ["number", "Número"], ["district", "Bairro"], ["city", "Cidade"], ["state", "UF"],
+  ];
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-semibold tracking-tight">Membros</h1><p className="text-sm text-muted-foreground">{data.length} membros</p></div>
+        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Novo membro</Button>
+      </div>
+      <Input placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+      <Card><CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr className="text-left">
+              <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Nome</th><th className="p-3 font-medium">E-mail</th><th className="p-3 font-medium">Curso</th><th></th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((m: any) => (
+                <tr key={m.id} className="border-t border-border">
+                  <td className="p-3 font-mono text-xs">{m.code}</td>
+                  <td className="p-3 font-medium">{m.full_name}</td>
+                  <td className="p-3 text-muted-foreground">{m.email ?? "—"}</td>
+                  <td className="p-3 text-muted-foreground">{m.course ?? "—"}</td>
+                  <td className="p-3 text-right space-x-1">
+                    <Button size="sm" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      if (!confirm("Excluir?")) return;
+                      try { await del({ data: { id: m.id } }); qc.invalidateQueries({ queryKey: ["members"] }); }
+                      catch (e: any) { toast.error(e.message); }
+                    }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum membro.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </CardContent></Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing ? "Editar membro" : "Novo membro"}</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+            {fields.map(([n, l]) => (
+              <div key={n} className={n === "full_name" ? "col-span-2" : ""}>
+                <Label>{l}</Label>
+                <Input name={n} required={n === "code" || n === "full_name"} defaultValue={editing?.[n] ?? ""} />
+              </div>
+            ))}
+            <DialogFooter className="col-span-2">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

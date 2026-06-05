@@ -14,159 +14,203 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_log: {
+      books: {
         Row: {
-          action: string
-          changes: Json | null
+          author: string
+          borrowed_quantity: number
+          category_id: string | null
+          code: string
+          cover_url: string | null
           created_at: string
           id: string
-          record_id: string
-          table_name: string
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          changes?: Json | null
-          created_at?: string
-          id?: string
-          record_id: string
-          table_name: string
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          changes?: Json | null
-          created_at?: string
-          id?: string
-          record_id?: string
-          table_name?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      comp_plans: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          effective_date: string
-          id: string
-          is_active: boolean
-          name: string
+          isbn: string | null
+          publication_year: number | null
+          publisher_id: string | null
+          title: string
+          total_quantity: number
           updated_at: string
         }
         Insert: {
+          author: string
+          borrowed_quantity?: number
+          category_id?: string | null
+          code: string
+          cover_url?: string | null
           created_at?: string
-          created_by?: string | null
-          effective_date: string
           id?: string
-          is_active?: boolean
-          name: string
+          isbn?: string | null
+          publication_year?: number | null
+          publisher_id?: string | null
+          title: string
+          total_quantity?: number
           updated_at?: string
         }
         Update: {
+          author?: string
+          borrowed_quantity?: number
+          category_id?: string | null
+          code?: string
+          cover_url?: string | null
           created_at?: string
-          created_by?: string | null
-          effective_date?: string
           id?: string
-          is_active?: boolean
+          isbn?: string | null
+          publication_year?: number | null
+          publisher_id?: string | null
+          title?: string
+          total_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "books_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
           name?: string
-          updated_at?: string
         }
         Relationships: []
       }
-      comp_tiers: {
+      loans: {
         Row: {
-          commission_rate: number
-          comp_plan_id: string
+          book_id: string
+          code: string
           created_at: string
+          created_by: string | null
+          due_date: string
           id: string
-          max_deal_size: number | null
-          min_deal_size: number
-          tier_name: string
+          loan_date: string
+          member_id: string
+          return_date: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
         }
         Insert: {
-          commission_rate: number
-          comp_plan_id: string
+          book_id: string
+          code?: string
           created_at?: string
+          created_by?: string | null
+          due_date: string
           id?: string
-          max_deal_size?: number | null
-          min_deal_size?: number
-          tier_name: string
+          loan_date?: string
+          member_id: string
+          return_date?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
         }
         Update: {
-          commission_rate?: number
-          comp_plan_id?: string
+          book_id?: string
+          code?: string
           created_at?: string
+          created_by?: string | null
+          due_date?: string
           id?: string
-          max_deal_size?: number | null
-          min_deal_size?: number
-          tier_name?: string
+          loan_date?: string
+          member_id?: string
+          return_date?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "comp_tiers_comp_plan_id_fkey"
-            columns: ["comp_plan_id"]
+            foreignKeyName: "loans_book_id_fkey"
+            columns: ["book_id"]
             isOneToOne: false
-            referencedRelation: "comp_plans"
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
       }
-      deals: {
+      members: {
         Row: {
-          close_date: string
-          commission_amount: number
+          city: string | null
+          code: string
+          course: string | null
+          cpf: string | null
           created_at: string
-          created_by: string | null
-          deal_size: number
-          deal_type: string
-          deleted_at: string | null
+          district: string | null
+          email: string | null
+          full_name: string
+          grade: string | null
           id: string
-          notes: string | null
-          rep_id: string
-          status: Database["public"]["Enums"]["deal_status"]
-          tier_applied: string | null
+          member_role: string | null
+          number: string | null
+          phone: string | null
+          registration: string | null
+          state: string | null
+          street: string | null
           updated_at: string
         }
         Insert: {
-          close_date: string
-          commission_amount?: number
+          city?: string | null
+          code: string
+          course?: string | null
+          cpf?: string | null
           created_at?: string
-          created_by?: string | null
-          deal_size: number
-          deal_type: string
-          deleted_at?: string | null
+          district?: string | null
+          email?: string | null
+          full_name: string
+          grade?: string | null
           id?: string
-          notes?: string | null
-          rep_id: string
-          status?: Database["public"]["Enums"]["deal_status"]
-          tier_applied?: string | null
+          member_role?: string | null
+          number?: string | null
+          phone?: string | null
+          registration?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
         }
         Update: {
-          close_date?: string
-          commission_amount?: number
+          city?: string | null
+          code?: string
+          course?: string | null
+          cpf?: string | null
           created_at?: string
-          created_by?: string | null
-          deal_size?: number
-          deal_type?: string
-          deleted_at?: string | null
+          district?: string | null
+          email?: string | null
+          full_name?: string
+          grade?: string | null
           id?: string
-          notes?: string | null
-          rep_id?: string
-          status?: Database["public"]["Enums"]["deal_status"]
-          tier_applied?: string | null
+          member_role?: string | null
+          number?: string | null
+          phone?: string | null
+          registration?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "deals_rep_id_fkey"
-            columns: ["rep_id"]
-            isOneToOne: false
-            referencedRelation: "reps"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -192,69 +236,33 @@ export type Database = {
         }
         Relationships: []
       }
-      quota_tiers: {
+      publishers: {
         Row: {
-          color: string
-          created_at: string
-          id: string
-          max_attainment: number | null
-          min_attainment: number
-          rate_multiplier: number
-          tier_name: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          id?: string
-          max_attainment?: number | null
-          min_attainment?: number
-          rate_multiplier?: number
-          tier_name: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          id?: string
-          max_attainment?: number | null
-          min_attainment?: number
-          rate_multiplier?: number
-          tier_name?: string
-        }
-        Relationships: []
-      }
-      reps: {
-        Row: {
+          code: string
           created_at: string
           email: string | null
           id: string
           name: string
-          quota_period: Database["public"]["Enums"]["quota_period"]
-          quota_target: number
-          team: string
+          phone: string | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
+          code: string
           created_at?: string
           email?: string | null
           id?: string
           name: string
-          quota_period?: Database["public"]["Enums"]["quota_period"]
-          quota_target?: number
-          team?: string
+          phone?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
+          code?: string
           created_at?: string
           email?: string | null
           id?: string
           name?: string
-          quota_period?: Database["public"]["Enums"]["quota_period"]
-          quota_target?: number
-          team?: string
+          phone?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -290,9 +298,8 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "rep"
-      deal_status: "closed" | "open"
-      quota_period: "month" | "quarter" | "year"
+      app_role: "admin" | "rep" | "librarian"
+      loan_status: "active" | "overdue" | "returned"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -420,9 +427,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "rep"],
-      deal_status: ["closed", "open"],
-      quota_period: ["month", "quarter", "year"],
+      app_role: ["admin", "rep", "librarian"],
+      loan_status: ["active", "overdue", "returned"],
     },
   },
 } as const
