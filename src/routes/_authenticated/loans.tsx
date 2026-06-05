@@ -1,0 +1,125 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { loansQueryOptions, booksQueryOptions, membersQueryOptions } from "@/lib/query-options";
+import { createLoan, returnLoan } from "@/lib/server-functions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Plus, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/loans")({
+  loader: ({ context }) => Promise.all([
+    context.queryClient.ensureQueryData(loansQueryOptions()),
+    context.queryClient.ensureQueryData(booksQueryOptions()),
+    context.queryClient.ensureQueryData(membersQueryOptions()),
+  ]),
+  component: LoansPage,
+  errorComponent: ({ error }) => <div className="p-6 text-destructive">Erro: {error.message}</div>,
+});
+
+function LoansPage() {
+  const { data: loans } = useSuspenseQuery(loansQueryOptions());
+  const { data: books } = useSuspenseQuery(booksQueryOptions());
+  const { data: members } = useSuspenseQuery(membersQueryOptions());
+  const qc = useQueryClient();
+  const create = useServerFn(createLoan);
+  const ret = useServerFn(returnLoan);
+  const [open, setOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const availableBooks = books.filter((b: any) => (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0) > 0);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    try {
+      await create({ data: {
+        member_id: String(f.get("member_id")),
+        book_id: String(f.get("book_id")),
+        due_date: String(f.get("due_date")),
+      }});
+      toast.success("Empréstimo registrado");
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ["loans"] });
+      qc.invalidateQueries({ queryKey: ["books"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (err: any) { toast.error(err.message); }
+  }
+
+  const statusLabel: Record<string, string> = { active: "Ativo", overdue: "Atrasado", returned: "Devolvido" };
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-semibold tracking-tight">Empréstimos</h1><p className="text-sm text-muted-foreground">{loans.length} registros</p></div>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1.5" />Novo empréstimo</Button>
+      </div>
+      <Card><CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50"><tr className="text-left">
+              <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Membro</th><th className="p-3 font-medium">Livro</th>
+              <th className="p-3 font-medium">Emprestado</th><th className="p-3 font-medium">Devolução prevista</th><th className="p-3 font-medium">Status</th><th></th>
+            </tr></thead>
+            <tbody>
+              {loans.map((l: any) => {
+                const overdue = l.status !== "returned" && l.due_date < today;
+                return (
+                  <tr key={l.id} className="border-t border-border">
+                    <td className="p-3 font-mono text-xs">{l.code}</td>
+                    <td className="p-3 font-medium">{l.members?.full_name}</td>
+                    <td className="p-3">{l.books?.title}</td>
+                    <td className="p-3 text-muted-foreground">{l.loan_date}</td>
+                    <td className={`p-3 ${overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>{l.due_date}</td>
+                    <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full ${l.status === "returned" ? "bg-success/15 text-success" : overdue ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"}`}>{overdue && l.status !== "returned" ? "Atrasado" : statusLabel[l.status]}</span></td>
+                    <td className="p-3 text-right">
+                      {l.status !== "returned" && (
+                        <Button size="sm" variant="ghost" onClick={async () => {
+                          try { await ret({ data: { id: l.id } }); toast.success("Devolvido"); qc.invalidateQueries({ queryKey: ["loans"] }); qc.invalidateQueries({ queryKey: ["books"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); }
+                          catch (e: any) { toast.error(e.message); }
+                        }}><Undo2 className="h-3.5 w-3.5 mr-1" />Devolver</Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {loans.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum empréstimo.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </CardContent></Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Novo empréstimo</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <Label>Membro</Label>
+              <select name="member_id" required className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Selecione...</option>
+                {members.map((m: any) => <option key={m.id} value={m.id}>{m.full_name} ({m.code})</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Livro</Label>
+              <select name="book_id" required className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Selecione...</option>
+                {availableBooks.map((b: any) => <option key={b.id} value={b.id}>{b.title} ({(b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0)} disp.)</option>)}
+              </select>
+            </div>
+            <div><Label>Data prevista de devolução</Label><Input name="due_date" type="date" required defaultValue={new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)} /></div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+              <Button type="submit">Registrar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
