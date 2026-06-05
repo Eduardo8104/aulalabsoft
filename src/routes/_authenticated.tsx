@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useRealtimeDeals } from "@/hooks/use-realtime-deals";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -11,7 +11,6 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
-  useRealtimeDeals();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -25,15 +24,10 @@ function AuthenticatedLayout() {
         <div className="space-y-3 w-48">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
         </div>
       </div>
     );
   }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  return <Outlet />;
+  if (!isAuthenticated) return null;
+  return <AppLayout><Outlet /></AppLayout>;
 }
