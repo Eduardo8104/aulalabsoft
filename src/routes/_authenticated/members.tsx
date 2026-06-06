@@ -158,10 +158,14 @@ function MembersPage() {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar membro" : "Novo membro"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <Label>Código (automático)</Label>
+              <Input value={previewCode} readOnly disabled className="font-mono" />
+            </div>
             {fields.map(([n, l]) => (
               <div key={n} className={n === "full_name" ? "col-span-2" : ""}>
                 <Label>{l}</Label>
-                <Input name={n} required={n === "code" || n === "full_name"} defaultValue={editing?.[n] ?? ""} />
+                <Input name={n} required={n === "full_name"} defaultValue={editing?.[n] ?? ""} />
               </div>
             ))}
             <DialogFooter className="col-span-2">
