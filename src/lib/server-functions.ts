@@ -287,7 +287,7 @@ export const upsertMember = createServerFn({ method: "POST" })
     }
     const { error } = data.id
       ? await context.supabase.from("members").update(payload).eq("id", data.id)
-      : await context.supabase.from("members").insert(payload as never);
+      : await context.supabase.from("members").upsert(payload as never, { onConflict: "code" });
     if (error) throw dbError(error);
     return { ok: true };
   });
