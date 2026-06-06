@@ -46,11 +46,24 @@ function MembersPage() {
   const filteredStudents = students.filter((m: any) => matchesSearch(m) && (grade === "all" || m.grade === grade));
   const filteredStaff = staff.filter(matchesSearch);
 
+  function nextCode(prefix: "A" | "F") {
+    const re = new RegExp(`^${prefix}-(\\d+)$`);
+    const max = data.reduce((acc: number, m: any) => {
+      const match = re.exec(m.code ?? "");
+      return match ? Math.max(acc, parseInt(match[1], 10)) : acc;
+    }, 0);
+    return `${prefix}-${String(max + 1).padStart(4, "0")}`;
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const obj: any = { id: editing?.id };
     f.forEach((v, k) => { obj[k] = String(v); });
+    if (!editing) {
+      const prefix = STAFF_RE.test(obj.member_role ?? "") || tab === "funcionarios" ? "F" : "A";
+      obj.code = nextCode(prefix);
+    }
     try {
       await upsert({ data: obj });
       toast.success("Membro salvo");
@@ -65,8 +78,9 @@ function MembersPage() {
     catch (e: any) { toast.error(e.message); }
   }
 
+  const previewCode = editing?.code ?? nextCode(tab === "funcionarios" ? "F" : "A");
   const fields: [string, string][] = [
-    ["code", "Código"], ["registration", "Matrícula"], ["full_name", "Nome completo"], ["email", "E-mail"],
+    ["registration", "Matrícula"], ["full_name", "Nome completo"], ["email", "E-mail"],
     ["phone", "Telefone"], ["member_role", "Função"], ["course", "Curso"], ["grade", "Turma"], ["cpf", "CPF"],
     ["street", "Rua"], ["number", "Número"], ["district", "Bairro"], ["city", "Cidade"], ["state", "UF"],
   ];
