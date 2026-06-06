@@ -30,7 +30,7 @@ export const claimAdminIfFirst = createServerFn({ method: "POST" })
       .eq("role", "admin");
     if ((count ?? 0) > 0) return { granted: false };
     const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "admin" });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { granted: true };
   });
 
@@ -84,7 +84,7 @@ export const getPublishers = createServerFn({ method: "GET" })
       .from("publishers")
       .select("*")
       .order("name");
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -104,7 +104,7 @@ export const upsertPublisher = createServerFn({ method: "POST" })
     const { error } = data.id
       ? await context.supabase.from("publishers").update(payload).eq("id", data.id)
       : await context.supabase.from("publishers").insert(payload);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -113,7 +113,7 @@ export const deletePublisher = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("publishers").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -122,7 +122,7 @@ export const getCategories = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase.from("categories").select("*").order("name");
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -135,7 +135,7 @@ export const upsertCategory = createServerFn({ method: "POST" })
     const { error } = data.id
       ? await context.supabase.from("categories").update({ name: data.name }).eq("id", data.id)
       : await context.supabase.from("categories").insert({ name: data.name });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -144,7 +144,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("categories").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -156,7 +156,7 @@ export const getBooks = createServerFn({ method: "GET" })
       .from("books")
       .select("*, publishers(name), categories(name)")
       .order("title");
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -198,10 +198,10 @@ export const upsertBook = createServerFn({ method: "POST" })
         throw new Error("A quantidade total não pode ser menor que a quantidade emprestada.");
       }
       const { error } = await context.supabase.from("books").update(payload).eq("id", data.id);
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     } else {
       const { error } = await context.supabase.from("books").insert(payload);
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     }
     return { ok: true };
   });
@@ -219,7 +219,7 @@ export const deleteBook = createServerFn({ method: "POST" })
       throw new Error("Não é possível excluir um livro com exemplares emprestados.");
     }
     const { error } = await context.supabase.from("books").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -231,7 +231,7 @@ export const getMembers = createServerFn({ method: "GET" })
       .from("members")
       .select("*")
       .order("full_name");
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -265,7 +265,7 @@ export const upsertMember = createServerFn({ method: "POST" })
     const { error } = data.id
       ? await context.supabase.from("members").update(payload).eq("id", data.id)
       : await context.supabase.from("members").insert(payload as never);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -282,7 +282,7 @@ export const deleteMember = createServerFn({ method: "POST" })
       throw new Error("Não é possível excluir um membro com empréstimos ativos.");
     }
     const { error } = await context.supabase.from("members").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -294,7 +294,7 @@ export const getLoans = createServerFn({ method: "GET" })
       .from("loans")
       .select("*, members(full_name, code), books(title, code)")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -325,12 +325,12 @@ export const createLoan = createServerFn({ method: "POST" })
       status: "active",
       created_by: userId,
     });
-    if (le) throw new Error(le.message);
+    if (le) throw dbError(le);
     const { error: ue } = await supabase
       .from("books")
       .update({ borrowed_quantity: (book.borrowed_quantity ?? 0) + 1 })
       .eq("id", data.book_id);
-    if (ue) throw new Error(ue.message);
+    if (ue) throw dbError(ue);
     return { ok: true };
   });
 
@@ -352,7 +352,7 @@ export const returnLoan = createServerFn({ method: "POST" })
       .from("loans")
       .update({ status: "returned", return_date: today })
       .eq("id", data.id);
-    if (ue) throw new Error(ue.message);
+    if (ue) throw dbError(ue);
 
     const { data: book } = await supabase
       .from("books")
