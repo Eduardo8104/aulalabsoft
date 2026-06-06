@@ -14,12 +14,15 @@ export interface AuthState {
 
 function setAuthCookie(token: string | null) {
   if (typeof document === "undefined") return;
+  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+  const secure = isHttps ? "; Secure" : "";
   if (token) {
-    document.cookie = `sb-token=${token}; path=/; max-age=3600; SameSite=Lax`;
+    document.cookie = `sb-token=${token}; path=/; max-age=3600; SameSite=Lax${secure}`;
   } else {
-    document.cookie = "sb-token=; path=/; max-age=0; SameSite=Lax";
+    document.cookie = `sb-token=; path=/; max-age=0; SameSite=Lax${secure}`;
   }
 }
+
 
 export function useAuth(): AuthState {
   const [session, setSession] = useState<Session | null>(null);
