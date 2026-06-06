@@ -2,6 +2,29 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+// Map raw Postgres/PostgREST errors to safe user-facing messages.
+// Raw details are logged server-side only.
+function dbError(err: { message?: string; code?: string; details?: string } | null | undefined): Error {
+  console.error("[db]", err);
+  const code = err?.code;
+  switch (code) {
+    case "23505":
+      return new Error("Já existe um registro com esses dados.");
+    case "23503":
+      return new Error("Registro relacionado não encontrado ou em uso.");
+    case "23502":
+      return new Error("Campo obrigatório ausente.");
+    case "23514":
+      return new Error("Dados inválidos para esta operação.");
+    case "42501":
+    case "PGRST301":
+      return new Error("Você não tem permissão para esta operação.");
+    default:
+      return new Error("Não foi possível concluir a operação. Tente novamente.");
+  }
+}
+
+
 // ---------- Current user + roles ----------
 export const getCurrentUser = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
