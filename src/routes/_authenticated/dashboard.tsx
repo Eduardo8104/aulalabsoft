@@ -89,6 +89,7 @@ function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Painel</h1>
         <p className="text-sm text-muted-foreground">Visão geral da biblioteca.</p>
       </div>
+      <ClaimAdminCard />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Stat icon={Library} label="Títulos" value={data.totalTitles} />
         <Stat icon={BookOpen} label="Exemplares disponíveis" value={data.availableBooks} />
