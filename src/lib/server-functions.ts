@@ -34,28 +34,76 @@ export const getCurrentUser = createServerFn({ method: "GET" })
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
+    const roleList = (roles ?? []).map((r) => r.role);
     return {
       userId,
       profile,
-      roles: (roles ?? []).map((r) => r.role),
+      roles: roleList,
+      isAdmin: roleList.includes("admin"),
+      isStaff: roleList.includes("admin") || roleList.includes("librarian"),
     };
   });
 
-// First user becomes admin (bootstrap)
-export const claimAdminIfFirst = createServerFn({ method: "POST" })
+// Bootstrap: ensures profile exists, grants admin to first user, otherwise
+// "user" role, and auto-promotes to librarian if there's a matching member
+// record with member_role containing "bibliotec".
+export const ensureUserSetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { userId } = context;
+    const { userId, claims } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count } = await supabaseAdmin
+    const email = (claims.email as string | undefined) ?? null;
+    const name =
+      (claims.user_metadata as Record<string, unknown> | undefined)?.full_name ??
+      (claims.user_metadata as Record<string, unknown> | undefined)?.name ??
+      null;
+
+    // Ensure profile row
+    await supabaseAdmin
+      .from("profiles")
+      .upsert({ id: userId, email, name: name as string | null }, { onConflict: "id" });
+
+    // Existing roles
+    const { data: existing } = await supabaseAdmin
       .from("user_roles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "admin");
-    if ((count ?? 0) > 0) return { granted: false };
-    const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "admin" });
-    if (error) throw dbError(error);
-    return { granted: true };
+      .select("role")
+      .eq("user_id", userId);
+    const have = new Set((existing ?? []).map((r) => r.role));
+
+    if (have.size === 0) {
+      // First user -> admin; else default to "user"
+      const { count } = await supabaseAdmin
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin");
+      const role = (count ?? 0) === 0 ? "admin" : "user";
+      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role });
+      have.add(role);
+    }
+
+    // Auto-promote librarian by email match in members table
+    if (email && !have.has("librarian") && !have.has("admin")) {
+      const { data: m } = await supabaseAdmin
+        .from("members")
+        .select("member_role")
+        .ilike("email", email)
+        .maybeSingle();
+      if (m?.member_role && /bibliotec/i.test(m.member_role)) {
+        await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: userId, role: "librarian" });
+        have.add("librarian");
+      }
+    }
+
+    const roles = Array.from(have);
+    return {
+      roles,
+      isAdmin: roles.includes("admin"),
+      isStaff: roles.includes("admin") || roles.includes("librarian"),
+    };
   });
+
 
 // ---------- Dashboard ----------
 export const getDashboard = createServerFn({ method: "GET" })
