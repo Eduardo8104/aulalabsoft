@@ -13,10 +13,12 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPublishersRouteImport } from './routes/_authenticated/publishers'
+import { Route as AuthenticatedMyLoansRouteImport } from './routes/_authenticated/my-loans'
 import { Route as AuthenticatedMembersRouteImport } from './routes/_authenticated/members'
 import { Route as AuthenticatedLoansRouteImport } from './routes/_authenticated/loans'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCategoriesRouteImport } from './routes/_authenticated/categories'
+import { Route as AuthenticatedCatalogRouteImport } from './routes/_authenticated/catalog'
 import { Route as AuthenticatedBooksRouteImport } from './routes/_authenticated/books'
 
 const LoginRoute = LoginRouteImport.update({
@@ -36,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedPublishersRoute = AuthenticatedPublishersRouteImport.update({
   id: '/publishers',
   path: '/publishers',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMyLoansRoute = AuthenticatedMyLoansRouteImport.update({
+  id: '/my-loans',
+  path: '/my-loans',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMembersRoute = AuthenticatedMembersRouteImport.update({
@@ -58,6 +65,11 @@ const AuthenticatedCategoriesRoute = AuthenticatedCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCatalogRoute = AuthenticatedCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedBooksRoute = AuthenticatedBooksRouteImport.update({
   id: '/books',
   path: '/books',
@@ -68,20 +80,24 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/books': typeof AuthenticatedBooksRoute
+  '/catalog': typeof AuthenticatedCatalogRoute
   '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/loans': typeof AuthenticatedLoansRoute
   '/members': typeof AuthenticatedMembersRoute
+  '/my-loans': typeof AuthenticatedMyLoansRoute
   '/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/books': typeof AuthenticatedBooksRoute
+  '/catalog': typeof AuthenticatedCatalogRoute
   '/categories': typeof AuthenticatedCategoriesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/loans': typeof AuthenticatedLoansRoute
   '/members': typeof AuthenticatedMembersRoute
+  '/my-loans': typeof AuthenticatedMyLoansRoute
   '/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRoutesById {
@@ -90,10 +106,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/books': typeof AuthenticatedBooksRoute
+  '/_authenticated/catalog': typeof AuthenticatedCatalogRoute
   '/_authenticated/categories': typeof AuthenticatedCategoriesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/loans': typeof AuthenticatedLoansRoute
   '/_authenticated/members': typeof AuthenticatedMembersRoute
+  '/_authenticated/my-loans': typeof AuthenticatedMyLoansRoute
   '/_authenticated/publishers': typeof AuthenticatedPublishersRoute
 }
 export interface FileRouteTypes {
@@ -102,20 +120,24 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/books'
+    | '/catalog'
     | '/categories'
     | '/dashboard'
     | '/loans'
     | '/members'
+    | '/my-loans'
     | '/publishers'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/books'
+    | '/catalog'
     | '/categories'
     | '/dashboard'
     | '/loans'
     | '/members'
+    | '/my-loans'
     | '/publishers'
   id:
     | '__root__'
@@ -123,10 +145,12 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/books'
+    | '/_authenticated/catalog'
     | '/_authenticated/categories'
     | '/_authenticated/dashboard'
     | '/_authenticated/loans'
     | '/_authenticated/members'
+    | '/_authenticated/my-loans'
     | '/_authenticated/publishers'
   fileRoutesById: FileRoutesById
 }
@@ -166,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPublishersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/my-loans': {
+      id: '/_authenticated/my-loans'
+      path: '/my-loans'
+      fullPath: '/my-loans'
+      preLoaderRoute: typeof AuthenticatedMyLoansRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/members': {
       id: '/_authenticated/members'
       path: '/members'
@@ -194,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCategoriesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/catalog': {
+      id: '/_authenticated/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof AuthenticatedCatalogRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/books': {
       id: '/_authenticated/books'
       path: '/books'
@@ -206,19 +244,23 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedBooksRoute: typeof AuthenticatedBooksRoute
+  AuthenticatedCatalogRoute: typeof AuthenticatedCatalogRoute
   AuthenticatedCategoriesRoute: typeof AuthenticatedCategoriesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedLoansRoute: typeof AuthenticatedLoansRoute
   AuthenticatedMembersRoute: typeof AuthenticatedMembersRoute
+  AuthenticatedMyLoansRoute: typeof AuthenticatedMyLoansRoute
   AuthenticatedPublishersRoute: typeof AuthenticatedPublishersRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBooksRoute: AuthenticatedBooksRoute,
+  AuthenticatedCatalogRoute: AuthenticatedCatalogRoute,
   AuthenticatedCategoriesRoute: AuthenticatedCategoriesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedLoansRoute: AuthenticatedLoansRoute,
   AuthenticatedMembersRoute: AuthenticatedMembersRoute,
+  AuthenticatedMyLoansRoute: AuthenticatedMyLoansRoute,
   AuthenticatedPublishersRoute: AuthenticatedPublishersRoute,
 }
 
