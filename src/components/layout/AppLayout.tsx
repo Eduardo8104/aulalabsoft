@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { LayoutDashboard, BookOpen, Building2, Users, Repeat, Tag, LogOut, Menu, X, Library } from "lucide-react";
+import { LayoutDashboard, BookOpen, Building2, Users, Repeat, Tag, LogOut, Menu, X, Library, BookMarked, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
 
-const navItems = [
+const staffNav = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/books", label: "Livros", icon: BookOpen },
   { to: "/loans", label: "Empréstimos", icon: Repeat },
@@ -13,11 +14,19 @@ const navItems = [
   { to: "/categories", label: "Categorias", icon: Tag },
 ] as const;
 
+const userNav = [
+  { to: "/catalog", label: "Catálogo", icon: BookMarked },
+  { to: "/my-loans", label: "Meus empréstimos", icon: ClipboardList },
+] as const;
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isStaff } = useRole();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navItems = isStaff ? staffNav : userNav;
 
   const email = user?.email ?? "";
   const name = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? email.split("@")[0];

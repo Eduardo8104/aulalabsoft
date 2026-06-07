@@ -30,6 +30,7 @@ function LoginPage() {
     }
   }, [isLoading, isAuthenticated, navigate]);
 
+
   async function handleGoogleSignIn() {
     setError("");
     setGoogleLoading(true);
@@ -76,8 +77,9 @@ function LoginPage() {
           <div className="mx-auto mb-3">
             <TrendingUp className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-lg">CommCalc</CardTitle>
-          <CardDescription>{isSignUp ? "Create your account" : "Sign in to continue"}</CardDescription>
+          <CardTitle className="text-lg">BibliotecaPro</CardTitle>
+          <CardDescription>{isSignUp ? "Crie sua conta" : "Entre para continuar"}</CardDescription>
+
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
