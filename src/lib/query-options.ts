@@ -7,6 +7,8 @@ import {
   getMembers,
   getLoans,
   getCurrentUser,
+  getCatalog,
+  getMyLoans,
 } from "./server-functions";
 
 export const dashboardQueryOptions = () =>
@@ -29,3 +31,9 @@ export const loansQueryOptions = () =>
 
 export const currentUserQueryOptions = () =>
   queryOptions({ queryKey: ["current-user"], queryFn: () => getCurrentUser() });
+
+export const catalogQueryOptions = () =>
+  queryOptions({ queryKey: ["catalog"], queryFn: () => getCatalog() });
+
+export const myLoansQueryOptions = () =>
+  queryOptions({ queryKey: ["my-loans"], queryFn: () => getMyLoans() });

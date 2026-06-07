@@ -67,7 +67,7 @@ function CatalogPage() {
     <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Catálogo</h1>
-        <p className="text-sm text-muted-foreground">{data.length} títulos disponíveis para consulta.</p>
+        <p className="text-sm text-muted-foreground">{(data as any[]).length} títulos disponíveis para consulta.</p>
       </div>
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

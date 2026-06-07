@@ -56,7 +56,7 @@ function MyLoansPage() {
                   <td className="p-3"><span className="text-xs uppercase tracking-wide">{STATUS_LABEL[l.status] ?? l.status}</span></td>
                 </tr>
               ))}
-              {data.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Você ainda não solicitou empréstimos.</td></tr>}
+              {(data as any[]).length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">Você ainda não solicitou empréstimos.</td></tr>}
             </tbody>
           </table>
         </div>
