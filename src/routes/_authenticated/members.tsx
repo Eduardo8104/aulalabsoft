@@ -60,7 +60,9 @@ function MembersPage() {
     const f = new FormData(e.currentTarget);
     const obj: any = { id: editing?.id };
     f.forEach((v, k) => { obj[k] = String(v); });
-    if (!editing) {
+    if (editing) {
+      obj.code = editing.code;
+    } else {
       const prefix = STAFF_RE.test(obj.member_role ?? "") || tab === "funcionarios" ? "F" : "A";
       obj.code = nextCode(prefix);
     }
