@@ -1,3 +1,4 @@
+import { useStaffGuard } from "@/hooks/use-role";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/books")({
 });
 
 function BooksPage() {
+  useStaffGuard();
   const { data: books } = useSuspenseQuery(booksQueryOptions());
   const { data: publishers } = useSuspenseQuery(publishersQueryOptions());
   const { data: categories } = useSuspenseQuery(categoriesQueryOptions());
