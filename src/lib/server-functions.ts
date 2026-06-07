@@ -301,7 +301,7 @@ export const deleteMember = createServerFn({ method: "POST" })
       .select("id", { count: "exact", head: true })
       .eq("member_id", data.id);
     if ((count ?? 0) > 0) {
-      throw new Error("Não é possível excluir um membro com empréstimos no histórico.");
+      return { ok: false, message: "Não é possível excluir um membro com empréstimos no histórico." };
     }
     const { error } = await context.supabase.from("members").delete().eq("id", data.id);
     if (error) throw dbError(error);
