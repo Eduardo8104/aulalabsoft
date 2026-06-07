@@ -460,3 +460,120 @@ export const returnLoan = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+// ---------- End-user catalog & loan requests ----------
+export const getCatalog = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("books")
+      .select("id, code, title, author, cover_url, total_quantity, borrowed_quantity, publishers(name), categories(name)")
+      .order("title");
+    if (error) throw dbError(error);
+    return data ?? [];
+  });
+
+export const getMyLoans = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("loans")
+      .select("id, status, loan_date, due_date, return_date, books(title, code)")
+      .eq("requested_by", context.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw dbError(error);
+    return data ?? [];
+  });
+
+export const requestLoan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      book_id: z.string().uuid(),
+      due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Validate book has copies
+    const { data: book } = await supabaseAdmin
+      .from("books")
+      .select("total_quantity, borrowed_quantity")
+      .eq("id", data.book_id)
+      .single();
+    if (!book) throw new Error("Livro não encontrado.");
+    if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) {
+      throw new Error("Sem exemplares disponíveis.");
+    }
+
+    // Try to find a matching member record by user's email
+    const { data: claims } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = claims.user?.email ?? null;
+    let memberId: string | null = null;
+    if (email) {
+      const { data: m } = await supabaseAdmin
+        .from("members")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+      memberId = m?.id ?? null;
+    }
+    if (!memberId) {
+      // Create a placeholder member tied to this user
+      const code = `U-${userId.slice(0, 8)}`;
+      const fullName = (claims.user?.user_metadata?.full_name as string)
+        ?? (claims.user?.user_metadata?.name as string)
+        ?? email
+        ?? "Usuário";
+      const { data: newM, error: me } = await supabaseAdmin
+        .from("members")
+        .upsert({ code, full_name: fullName, email }, { onConflict: "code" })
+        .select("id")
+        .single();
+      if (me || !newM) throw dbError(me);
+      memberId = newM.id;
+    }
+
+    const { error } = await supabaseAdmin.from("loans").insert({
+      member_id: memberId,
+      book_id: data.book_id,
+      due_date: data.due_date,
+      status: "pending",
+      requested_by: userId,
+      created_by: userId,
+    });
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+export const approveLoan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: loan } = await supabase.from("loans").select("book_id, status").eq("id", data.id).single();
+    if (!loan) throw new Error("Empréstimo não encontrado.");
+    if (loan.status !== "pending") throw new Error("Solicitação já processada.");
+
+    const { data: book } = await supabase.from("books").select("total_quantity, borrowed_quantity").eq("id", loan.book_id).single();
+    if (!book) throw new Error("Livro não encontrado.");
+    if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) throw new Error("Sem exemplares disponíveis.");
+
+    const { error: ue } = await supabase.from("loans").update({ status: "active" }).eq("id", data.id);
+    if (ue) throw dbError(ue);
+    await supabase.from("books").update({ borrowed_quantity: (book.borrowed_quantity ?? 0) + 1 }).eq("id", loan.book_id);
+    return { ok: true };
+  });
+
+export const rejectLoan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("loans").update({ status: "rejected" }).eq("id", data.id).eq("status", "pending");
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
