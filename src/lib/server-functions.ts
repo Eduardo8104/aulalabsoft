@@ -296,14 +296,8 @@ export const deleteMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
-    const { count } = await context.supabase
-      .from("loans")
-      .select("id", { count: "exact", head: true })
-      .eq("member_id", data.id);
-    if ((count ?? 0) > 0) {
-      return { ok: false, message: "Não é possível excluir um membro com empréstimos no histórico." };
-    }
-    const { error } = await context.supabase.from("members").delete().eq("id", data.id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("members").delete().eq("id", data.id);
     if (error) throw dbError(error);
     return { ok: true };
   });
