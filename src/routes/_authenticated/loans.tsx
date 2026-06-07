@@ -3,7 +3,10 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { loansQueryOptions, booksQueryOptions, membersQueryOptions } from "@/lib/query-options";
-import { createLoan, returnLoan } from "@/lib/server-functions";
+import { createLoan, returnLoan, approveLoan, rejectLoan } from "@/lib/server-functions";
+import { useStaffGuard } from "@/hooks/use-role";
+import { Check, X as XIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -23,14 +26,24 @@ export const Route = createFileRoute("/_authenticated/loans")({
 });
 
 function LoansPage() {
+  useStaffGuard();
   const { data: loans } = useSuspenseQuery(loansQueryOptions());
   const { data: books } = useSuspenseQuery(booksQueryOptions());
   const { data: members } = useSuspenseQuery(membersQueryOptions());
   const qc = useQueryClient();
   const create = useServerFn(createLoan);
   const ret = useServerFn(returnLoan);
+  const approve = useServerFn(approveLoan);
+  const reject = useServerFn(rejectLoan);
   const [open, setOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
+
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ["loans"] });
+    qc.invalidateQueries({ queryKey: ["books"] });
+    qc.invalidateQueries({ queryKey: ["dashboard"] });
+  }
+
 
   const availableBooks = books.filter((b: any) => (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0) > 0);
 
@@ -51,7 +64,8 @@ function LoansPage() {
     } catch (err: any) { toast.error(err.message); }
   }
 
-  const statusLabel: Record<string, string> = { active: "Ativo", overdue: "Atrasado", returned: "Devolvido" };
+  const statusLabel: Record<string, string> = { pending: "Pendente", active: "Ativo", overdue: "Atrasado", returned: "Devolvido", rejected: "Rejeitado" };
+
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -77,14 +91,27 @@ function LoansPage() {
                     <td className="p-3 text-muted-foreground">{l.loan_date}</td>
                     <td className={`p-3 ${overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>{l.due_date}</td>
                     <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full ${l.status === "returned" ? "bg-success/15 text-success" : overdue ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"}`}>{overdue && l.status !== "returned" ? "Atrasado" : statusLabel[l.status]}</span></td>
-                    <td className="p-3 text-right">
-                      {l.status !== "returned" && (
+                    <td className="p-3 text-right space-x-1">
+                      {l.status === "pending" && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={async () => {
+                            try { await approve({ data: { id: l.id } }); toast.success("Aprovado"); invalidateAll(); }
+                            catch (e: any) { toast.error(e.message); }
+                          }}><Check className="h-3.5 w-3.5 mr-1" />Aprovar</Button>
+                          <Button size="sm" variant="ghost" onClick={async () => {
+                            try { await reject({ data: { id: l.id } }); toast.success("Rejeitado"); invalidateAll(); }
+                            catch (e: any) { toast.error(e.message); }
+                          }}><XIcon className="h-3.5 w-3.5 mr-1" />Rejeitar</Button>
+                        </>
+                      )}
+                      {l.status === "active" && (
                         <Button size="sm" variant="ghost" onClick={async () => {
-                          try { await ret({ data: { id: l.id } }); toast.success("Devolvido"); qc.invalidateQueries({ queryKey: ["loans"] }); qc.invalidateQueries({ queryKey: ["books"] }); qc.invalidateQueries({ queryKey: ["dashboard"] }); }
+                          try { await ret({ data: { id: l.id } }); toast.success("Devolvido"); invalidateAll(); }
                           catch (e: any) { toast.error(e.message); }
                         }}><Undo2 className="h-3.5 w-3.5 mr-1" />Devolver</Button>
                       )}
                     </td>
+
                   </tr>
                 );
               })}

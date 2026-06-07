@@ -1,3 +1,4 @@
+import { useStaffGuard } from "@/hooks/use-role";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -24,6 +25,7 @@ const STAFF_RE = /func|prof|staff|servidor|coorden|diret|bibliotec/i;
 const isStaff = (m: any) => STAFF_RE.test(m.member_role ?? "");
 
 function MembersPage() {
+  useStaffGuard();
   const { data } = useSuspenseQuery(membersQueryOptions());
   const qc = useQueryClient();
   const upsert = useServerFn(upsertMember);

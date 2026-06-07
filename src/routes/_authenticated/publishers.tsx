@@ -1,3 +1,4 @@
+import { useStaffGuard } from "@/hooks/use-role";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/publishers")({
 });
 
 function PublishersPage() {
+  useStaffGuard();
   const { data } = useSuspenseQuery(publishersQueryOptions());
   const qc = useQueryClient();
   const upsert = useServerFn(upsertPublisher);
