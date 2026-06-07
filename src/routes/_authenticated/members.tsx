@@ -76,7 +76,15 @@ function MembersPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir?")) return;
-    try { await del({ data: { id } }); qc.invalidateQueries({ queryKey: ["members"] }); }
+    try {
+      const result = await del({ data: { id } });
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      toast.success("Membro excluído");
+      qc.invalidateQueries({ queryKey: ["members"] });
+    }
     catch (e: any) { toast.error(e.message); }
   }
 
