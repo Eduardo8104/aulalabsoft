@@ -127,7 +127,7 @@ function BooksPage() {
       toast.success("Livro salvo");
       setOpen(false); setEditing(null);
       qc.invalidateQueries({ queryKey: ["books"] });
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err: any) { setUploading(false); toast.error(err.message ?? "Falha ao salvar."); }
   }
 
   async function handleDelete(id: string) {
