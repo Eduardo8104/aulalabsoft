@@ -2,16 +2,33 @@ import { useStaffGuard } from "@/hooks/use-role";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { booksQueryOptions, publishersQueryOptions, categoriesQueryOptions } from "@/lib/query-options";
-import { upsertBook, deleteBook } from "@/lib/server-functions";
+import { upsertBook, deleteBook, uploadBookCover } from "@/lib/server-functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import noCover from "@/assets/no-cover.svg";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_BYTES = 5 * 1024 * 1024;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+    r.onload = () => {
+      const result = String(r.result ?? "");
+      const idx = result.indexOf(",");
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    r.readAsDataURL(file);
+  });
+}
 
 export const Route = createFileRoute("/_authenticated/books")({
   loader: ({ context }) => Promise.all([
