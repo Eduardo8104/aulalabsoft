@@ -153,12 +153,21 @@ function BooksPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
+              <th className="p-3 font-medium w-12">Capa</th>
               <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Título</th><th className="p-3 font-medium">Autor</th>
               <th className="p-3 font-medium">Editora</th><th className="p-3 font-medium">Disponível</th><th className="p-3"></th>
             </tr></thead>
             <tbody>
               {filtered.map((b: any) => (
                 <tr key={b.id} className="border-t border-border">
+                  <td className="p-2">
+                    <img
+                      src={b.cover_url || noCover}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                      alt={b.title}
+                      className="h-12 w-9 object-cover rounded-sm bg-muted"
+                    />
+                  </td>
                   <td className="p-3 font-mono text-xs">{b.code}</td>
                   <td className="p-3 font-medium">{b.title}</td>
                   <td className="p-3 text-muted-foreground">{b.author}</td>
@@ -170,7 +179,7 @@ function BooksPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum livro encontrado.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum livro encontrado.</td></tr>}
             </tbody>
           </table>
         </div>
