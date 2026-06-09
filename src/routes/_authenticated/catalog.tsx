@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BookOpen, Search } from "lucide-react";
+import noCover from "@/assets/no-cover.svg";
 
 export const Route = createFileRoute("/_authenticated/catalog")({
   loader: ({ context }) => context.queryClient.ensureQueryData(catalogQueryOptions()),
