@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { myLoansQueryOptions } from "@/lib/query-options";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/my-loans")({
@@ -21,16 +19,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function MyLoansPage() {
   const { data } = useSuspenseQuery(myLoansQueryOptions());
-  const qc = useQueryClient();
 
-  useEffect(() => {
-    const ch = supabase.channel("my-loans")
-      .on("postgres_changes", { event: "*", schema: "public", table: "loans" }, () => {
-        qc.invalidateQueries({ queryKey: ["my-loans"] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [qc]);
 
   return (
     <div className="space-y-4 animate-fade-in">
