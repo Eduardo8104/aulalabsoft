@@ -209,10 +209,50 @@ function BooksPage() {
               </select>
             </div>
             <div><Label>Quantidade total</Label><Input name="total_quantity" type="number" min={0} required defaultValue={editing?.total_quantity ?? 1} /></div>
-            <div className="col-span-2"><Label>URL da capa</Label><Input name="cover_url" defaultValue={editing?.cover_url ?? ""} /></div>
+            <div className="col-span-2">
+              <Label>Capa do livro <span className="text-xs text-muted-foreground font-normal">(opcional, JPG/PNG/WEBP, máx. 5 MB)</span></Label>
+              <div className="mt-1.5 flex items-start gap-3">
+                <div className="h-28 w-20 shrink-0 rounded-sm border border-border bg-muted overflow-hidden">
+                  <img
+                    src={preview || noCover}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                    alt="Pré-visualização da capa"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={onFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      {preview ? "Trocar imagem" : "Selecionar imagem"}
+                    </Button>
+                    {(preview || coverUrl) && (
+                      <Button type="button" variant="ghost" size="sm" onClick={clearCover}>
+                        <X className="h-3.5 w-3.5 mr-1" /> Remover
+                      </Button>
+                    )}
+                  </div>
+                  {coverFile && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {coverFile.name} — {(coverFile.size / 1024).toFixed(0)} KB
+                    </p>
+                  )}
+                  {!coverFile && coverUrl && (
+                    <p className="text-xs text-muted-foreground truncate">Capa atual mantida.</p>
+                  )}
+                </div>
+              </div>
+            </div>
             <DialogFooter className="col-span-2">
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={uploading}>Cancelar</Button>
+              <Button type="submit" disabled={uploading}>{uploading ? "Enviando imagem..." : "Salvar"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
