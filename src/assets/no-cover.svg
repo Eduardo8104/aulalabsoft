@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 200" width="140" height="200">
+  <rect width="140" height="200" fill="#e5e7eb"/>
+  <rect x="8" y="8" width="124" height="184" fill="none" stroke="#9ca3af" stroke-dasharray="4 4"/>
+  <g fill="#6b7280" font-family="Inter, system-ui, sans-serif" text-anchor="middle">
+    <text x="70" y="92" font-size="14" font-weight="600">Sem Capa</text>
+    <text x="70" y="112" font-size="12">Disponível</text>
+  </g>
+</svg>

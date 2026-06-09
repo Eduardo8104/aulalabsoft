@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BookOpen, Search } from "lucide-react";
+import noCover from "@/assets/no-cover.svg";
 
 export const Route = createFileRoute("/_authenticated/catalog")({
   loader: ({ context }) => context.queryClient.ensureQueryData(catalogQueryOptions()),
@@ -79,9 +80,13 @@ function CatalogPage() {
           return (
             <Card key={b.id}>
               <CardContent className="p-4 flex gap-3">
-                <div className="h-20 w-14 shrink-0 rounded bg-muted flex items-center justify-center overflow-hidden">
-                  {b.cover_url ? <img src={b.cover_url} alt={b.title} className="h-full w-full object-cover" />
-                    : <BookOpen className="h-6 w-6 text-muted-foreground" />}
+                <div className="h-20 w-14 shrink-0 rounded-sm bg-muted overflow-hidden">
+                  <img
+                    src={b.cover_url || noCover}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                    alt={b.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{b.title}</p>

@@ -577,3 +577,58 @@ export const rejectLoan = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
+// ---------- Book cover upload ----------
+// Accepts a base64-encoded image, uploads to the private "book-covers" bucket
+// using the admin client, and returns a long-lived signed URL.
+const uploadInput = z.object({
+  filename: z.string().min(1).max(255),
+  contentType: z.enum(["image/jpeg", "image/jpg", "image/png", "image/webp"]),
+  // base64 (no data URL prefix); ~5MB binary => ~6.7MB base64
+  base64: z.string().min(1).max(7_500_000),
+});
+
+export const uploadBookCover = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => uploadInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Staff-only
+    const { data: roles } = await supabaseAdmin
+      .from("user_roles").select("role").eq("user_id", userId);
+    const rs = (roles ?? []).map((r) => r.role);
+    if (!rs.includes("admin") && !rs.includes("librarian")) {
+      throw new Error("Apenas administradores podem alterar capas.");
+    }
+
+    const bytes = Buffer.from(data.base64, "base64");
+    if (bytes.byteLength > 5 * 1024 * 1024) {
+      throw new Error("A imagem deve ter no máximo 5 MB.");
+    }
+    const extMap: Record<string, string> = {
+      "image/jpeg": "jpg", "image/jpg": "jpg",
+      "image/png": "png", "image/webp": "webp",
+    };
+    const ext = extMap[data.contentType] ?? "jpg";
+    const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("book-covers")
+      .upload(path, bytes, { contentType: data.contentType, upsert: false });
+    if (upErr) {
+      console.error("[storage] upload", upErr);
+      throw new Error("Falha ao enviar a imagem. Tente novamente.");
+    }
+
+    // 10-year signed URL
+    const { data: signed, error: sErr } = await supabaseAdmin.storage
+      .from("book-covers")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    if (sErr || !signed?.signedUrl) {
+      console.error("[storage] sign", sErr);
+      throw new Error("Falha ao gerar URL da imagem.");
+    }
+    return { url: signed.signedUrl, path };
+  });

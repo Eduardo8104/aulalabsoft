@@ -2,16 +2,33 @@ import { useStaffGuard } from "@/hooks/use-role";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { booksQueryOptions, publishersQueryOptions, categoriesQueryOptions } from "@/lib/query-options";
-import { upsertBook, deleteBook } from "@/lib/server-functions";
+import { upsertBook, deleteBook, uploadBookCover } from "@/lib/server-functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import noCover from "@/assets/no-cover.svg";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_BYTES = 5 * 1024 * 1024;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+    r.onload = () => {
+      const result = String(r.result ?? "");
+      const idx = result.indexOf(",");
+      resolve(idx >= 0 ? result.slice(idx + 1) : result);
+    };
+    r.readAsDataURL(file);
+  });
+}
 
 export const Route = createFileRoute("/_authenticated/books")({
   loader: ({ context }) => Promise.all([
@@ -30,10 +47,50 @@ function BooksPage() {
   const { data: categories } = useSuspenseQuery(categoriesQueryOptions());
   const qc = useQueryClient();
   const upsert = useServerFn(upsertBook);
+  const upload = useServerFn(uploadBookCover);
   const del = useServerFn(deleteBook);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [coverUrl, setCoverUrl] = useState<string>("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Reset cover state when dialog opens for a new/edit book
+  useEffect(() => {
+    if (open) {
+      setCoverUrl(editing?.cover_url ?? "");
+      setPreview(editing?.cover_url ?? "");
+      setCoverFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }, [open, editing]);
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      toast.error("Formato inválido. Use JPG, PNG ou WEBP.");
+      e.target.value = "";
+      return;
+    }
+    if (f.size > MAX_BYTES) {
+      toast.error("Imagem maior que 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    setCoverFile(f);
+    setPreview(URL.createObjectURL(f));
+  }
+
+  function clearCover() {
+    setCoverFile(null);
+    setCoverUrl("");
+    setPreview("");
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   const filtered = books.filter((b: any) =>
     b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())
@@ -43,6 +100,18 @@ function BooksPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     try {
+      let finalCover = coverUrl;
+      if (coverFile) {
+        setUploading(true);
+        const base64 = await fileToBase64(coverFile);
+        const res = await upload({ data: {
+          filename: coverFile.name,
+          contentType: coverFile.type as any,
+          base64,
+        }});
+        finalCover = res.url;
+        setUploading(false);
+      }
       await upsert({ data: {
         id: editing?.id,
         code: String(f.get("code") || ""),
@@ -53,12 +122,12 @@ function BooksPage() {
         publication_year: Number(f.get("publication_year")) || null,
         isbn: String(f.get("isbn") || ""),
         total_quantity: Number(f.get("total_quantity") || 1),
-        cover_url: String(f.get("cover_url") || ""),
+        cover_url: finalCover,
       }});
       toast.success("Livro salvo");
       setOpen(false); setEditing(null);
       qc.invalidateQueries({ queryKey: ["books"] });
-    } catch (err: any) { toast.error(err.message); }
+    } catch (err: any) { setUploading(false); toast.error(err.message ?? "Falha ao salvar."); }
   }
 
   async function handleDelete(id: string) {
@@ -84,12 +153,21 @@ function BooksPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
+              <th className="p-3 font-medium w-12">Capa</th>
               <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Título</th><th className="p-3 font-medium">Autor</th>
               <th className="p-3 font-medium">Editora</th><th className="p-3 font-medium">Disponível</th><th className="p-3"></th>
             </tr></thead>
             <tbody>
               {filtered.map((b: any) => (
                 <tr key={b.id} className="border-t border-border">
+                  <td className="p-2">
+                    <img
+                      src={b.cover_url || noCover}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                      alt={b.title}
+                      className="h-12 w-9 object-cover rounded-sm bg-muted"
+                    />
+                  </td>
                   <td className="p-3 font-mono text-xs">{b.code}</td>
                   <td className="p-3 font-medium">{b.title}</td>
                   <td className="p-3 text-muted-foreground">{b.author}</td>
@@ -101,7 +179,7 @@ function BooksPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum livro encontrado.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum livro encontrado.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -131,10 +209,50 @@ function BooksPage() {
               </select>
             </div>
             <div><Label>Quantidade total</Label><Input name="total_quantity" type="number" min={0} required defaultValue={editing?.total_quantity ?? 1} /></div>
-            <div className="col-span-2"><Label>URL da capa</Label><Input name="cover_url" defaultValue={editing?.cover_url ?? ""} /></div>
+            <div className="col-span-2">
+              <Label>Capa do livro <span className="text-xs text-muted-foreground font-normal">(opcional, JPG/PNG/WEBP, máx. 5 MB)</span></Label>
+              <div className="mt-1.5 flex items-start gap-3">
+                <div className="h-28 w-20 shrink-0 rounded-sm border border-border bg-muted overflow-hidden">
+                  <img
+                    src={preview || noCover}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                    alt="Pré-visualização da capa"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={onFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                      <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      {preview ? "Trocar imagem" : "Selecionar imagem"}
+                    </Button>
+                    {(preview || coverUrl) && (
+                      <Button type="button" variant="ghost" size="sm" onClick={clearCover}>
+                        <X className="h-3.5 w-3.5 mr-1" /> Remover
+                      </Button>
+                    )}
+                  </div>
+                  {coverFile && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {coverFile.name} — {(coverFile.size / 1024).toFixed(0)} KB
+                    </p>
+                  )}
+                  {!coverFile && coverUrl && (
+                    <p className="text-xs text-muted-foreground truncate">Capa atual mantida.</p>
+                  )}
+                </div>
+              </div>
+            </div>
             <DialogFooter className="col-span-2">
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit">Salvar</Button>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={uploading}>Cancelar</Button>
+              <Button type="submit" disabled={uploading}>{uploading ? "Enviando imagem..." : "Salvar"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
