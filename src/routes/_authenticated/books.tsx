@@ -47,10 +47,50 @@ function BooksPage() {
   const { data: categories } = useSuspenseQuery(categoriesQueryOptions());
   const qc = useQueryClient();
   const upsert = useServerFn(upsertBook);
+  const upload = useServerFn(uploadBookCover);
   const del = useServerFn(deleteBook);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [coverUrl, setCoverUrl] = useState<string>("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Reset cover state when dialog opens for a new/edit book
+  useEffect(() => {
+    if (open) {
+      setCoverUrl(editing?.cover_url ?? "");
+      setPreview(editing?.cover_url ?? "");
+      setCoverFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }, [open, editing]);
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      toast.error("Formato inválido. Use JPG, PNG ou WEBP.");
+      e.target.value = "";
+      return;
+    }
+    if (f.size > MAX_BYTES) {
+      toast.error("Imagem maior que 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    setCoverFile(f);
+    setPreview(URL.createObjectURL(f));
+  }
+
+  function clearCover() {
+    setCoverFile(null);
+    setCoverUrl("");
+    setPreview("");
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   const filtered = books.filter((b: any) =>
     b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())
@@ -60,6 +100,18 @@ function BooksPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     try {
+      let finalCover = coverUrl;
+      if (coverFile) {
+        setUploading(true);
+        const base64 = await fileToBase64(coverFile);
+        const res = await upload({ data: {
+          filename: coverFile.name,
+          contentType: coverFile.type as any,
+          base64,
+        }});
+        finalCover = res.url;
+        setUploading(false);
+      }
       await upsert({ data: {
         id: editing?.id,
         code: String(f.get("code") || ""),
