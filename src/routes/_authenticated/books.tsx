@@ -122,7 +122,7 @@ function BooksPage() {
         publication_year: Number(f.get("publication_year")) || null,
         isbn: String(f.get("isbn") || ""),
         total_quantity: Number(f.get("total_quantity") || 1),
-        cover_url: String(f.get("cover_url") || ""),
+        cover_url: finalCover,
       }});
       toast.success("Livro salvo");
       setOpen(false); setEditing(null);
