@@ -38,60 +38,71 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen">
-      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />}
+    <div className="flex min-h-screen bg-background">
+      {mobileOpen && <div className="fixed inset-0 z-40 bg-[#0D3B3B]/30 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-sidebar transition-transform duration-200",
+        "fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200",
         mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className="flex h-14 items-center justify-between border-b border-border px-5">
-          <div className="flex items-center gap-2.5">
-            <Library className="h-5 w-5 text-primary" />
-            <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">BibliotecaPro</span>
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-7 w-7 items-center justify-center bg-primary">
+              <Library className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="gold-divider" />
+            <div>
+              <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">BibliotecaPro</span>
+              <span className="block text-[10px] text-muted-foreground font-body tracking-wider uppercase">Gestão escolar</span>
+            </div>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="rounded-md p-1 text-muted-foreground hover:text-sidebar-foreground md:hidden">
-            <X className="h-5 w-5" />
+          <button onClick={() => setMobileOpen(false)} className="p-1 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent md:hidden transition-colors">
+            <X className="h-4 w-4" />
           </button>
         </div>
-        <nav className="flex-1 space-y-0.5 p-3">
+        <nav className="flex-1 space-y-0.5 p-4 pt-5">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
             return (
               <Link key={item.to} to={item.to} onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors min-h-[44px]",
-                  isActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all min-h-[44px]",
+                  "border-l-2",
+                  isActive
+                    ? "border-l-secondary bg-accent text-foreground font-semibold"
+                    : "border-l-transparent text-muted-foreground hover:bg-accent hover:text-foreground hover:border-l-secondary/30"
                 )}>
-                <item.icon className="h-4 w-4" />
+                <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
-        <div className="border-t border-border p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground">{initials}</div>
+        <div className="border-t border-sidebar-border p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-primary/10 text-primary text-xs font-display font-bold">{initials}</div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-sidebar-foreground truncate">{name}</p>
               <p className="text-[11px] text-muted-foreground truncate">{email}</p>
             </div>
-            <button onClick={handleSignOut} className="shrink-0 rounded-md p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors" title="Sair">
+            <button onClick={handleSignOut} className="shrink-0 p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" title="Sair">
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       </aside>
       <main className="flex-1 md:pl-60">
-        <div className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-background px-4 md:hidden">
-          <button onClick={() => setMobileOpen(true)} className="rounded-md p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-foreground hover:bg-muted transition-colors">
+        <div className="sticky top-0 z-30 flex h-16 items-center border-b border-border bg-background/90 backdrop-blur-sm px-6 md:hidden">
+          <button onClick={() => setMobileOpen(true)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-foreground hover:bg-accent transition-colors">
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2 ml-3">
-            <Library className="h-5 w-5 text-primary" />
+            <div className="flex h-7 w-7 items-center justify-center bg-primary">
+              <Library className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
             <span className="text-sm font-semibold tracking-tight">BibliotecaPro</span>
           </div>
         </div>
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</div>
+        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">{children}</div>
       </main>
     </div>
   );

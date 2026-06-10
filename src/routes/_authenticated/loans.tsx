@@ -69,28 +69,28 @@ function LoansPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-semibold tracking-tight">Empréstimos</h1><p className="text-sm text-muted-foreground">{loans.length} registros</p></div>
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <div><h1 className="text-2xl font-display font-bold tracking-tight">Empréstimos</h1><p className="text-sm text-muted-foreground mt-0.5">{loans.length} registros</p></div>
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1.5" />Novo empréstimo</Button>
       </div>
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
-              <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Membro</th><th className="p-3 font-medium">Livro</th>
-              <th className="p-3 font-medium">Emprestado</th><th className="p-3 font-medium">Devolução prevista</th><th className="p-3 font-medium">Status</th><th></th>
+              <th className="p-3 font-semibold">Código</th><th className="p-3 font-semibold">Membro</th><th className="p-3 font-semibold">Livro</th>
+              <th className="p-3 font-semibold">Emprestado</th><th className="p-3 font-semibold">Devolução prevista</th><th className="p-3 font-semibold">Status</th><th></th>
             </tr></thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {loans.map((l: any) => {
                 const overdue = l.status !== "returned" && l.due_date < today;
                 return (
-                  <tr key={l.id} className="border-t border-border">
-                    <td className="p-3 font-mono text-xs">{l.code}</td>
-                    <td className="p-3 font-medium">{l.members?.full_name}</td>
-                    <td className="p-3">{l.books?.title}</td>
+                  <tr key={l.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{l.code}</td>
+                    <td className="p-3 font-medium text-foreground">{l.members?.full_name}</td>
+                    <td className="p-3 text-foreground">{l.books?.title}</td>
                     <td className="p-3 text-muted-foreground">{l.loan_date}</td>
-                    <td className={`p-3 ${overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>{l.due_date}</td>
-                    <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full ${l.status === "returned" ? "bg-success/15 text-success" : overdue ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"}`}>{overdue && l.status !== "returned" ? "Atrasado" : statusLabel[l.status]}</span></td>
+                    <td className={`p-3 ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>{l.due_date}</td>
+                    <td className="p-3"><span className={`text-xs font-medium px-2.5 py-1 rounded-full ${l.status === "returned" ? "bg-success/10 text-success border border-success/20" : overdue ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-primary/10 text-primary border border-primary/20"}`}>{overdue && l.status !== "returned" ? "Atrasado" : statusLabel[l.status]}</span></td>
                     <td className="p-3 text-right space-x-1">
                       {l.status === "pending" && (
                         <>

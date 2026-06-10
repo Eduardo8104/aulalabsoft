@@ -182,38 +182,43 @@ function BooksPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Livros</h1>
-          <p className="text-sm text-muted-foreground">{books.length} títulos no acervo</p>
+          <h1 className="text-2xl font-display font-bold tracking-tight">Livros</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{books.length} títulos no acervo</p>
         </div>
-        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Novo livro</Button>
+        <Button onClick={() => { setEditing(null); setOpen(true); }} className="shadow-sm"><Plus className="h-4 w-4 mr-1.5" />Novo livro</Button>
       </div>
       <Input placeholder="Buscar por título ou autor..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
-              <th className="p-3 font-medium w-12">Capa</th>
-              <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Título</th><th className="p-3 font-medium">Autor</th>
-              <th className="p-3 font-medium">Editora</th><th className="p-3 font-medium">Disponível</th><th className="p-3"></th>
+              <th className="p-3 font-semibold w-12">Capa</th>
+              <th className="p-3 font-semibold">Código</th><th className="p-3 font-semibold">Título</th><th className="p-3 font-semibold">Autor</th>
+              <th className="p-3 font-semibold">Editora</th><th className="p-3 font-semibold">Disponível</th><th className="p-3"></th>
             </tr></thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {filtered.map((b: any) => (
-                <tr key={b.id} className="border-t border-border">
+                <tr key={b.id} className="hover:bg-muted/30 transition-colors">
                   <td className="p-2">
                     <img
                       src={b.cover_url || noCover}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
                       alt={b.title}
-                      className="h-12 w-9 object-cover rounded-sm bg-muted"
+                      className="h-14 w-10 object-cover rounded-sm bg-muted shadow-sm"
                     />
                   </td>
-                  <td className="p-3 font-mono text-xs">{b.code}</td>
-                  <td className="p-3 font-medium">{b.title}</td>
+                  <td className="p-3 font-mono text-xs text-muted-foreground">{b.code}</td>
+                  <td className="p-3 font-medium text-foreground">{b.title}</td>
                   <td className="p-3 text-muted-foreground">{b.author}</td>
                   <td className="p-3 text-muted-foreground">{b.publishers?.name ?? "—"}</td>
-                  <td className="p-3">{(b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0)} / {b.total_quantity}</td>
+                  <td className="p-3">
+                    <span className="inline-flex items-center gap-1 text-sm">
+                      <span className="font-semibold text-foreground">{(b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0)}</span>
+                      <span className="text-muted-foreground">/ {b.total_quantity}</span>
+                    </span>
+                  </td>
                   <td className="p-3 text-right space-x-1">
                     <Button size="sm" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
                     <Button size="sm" variant="ghost" onClick={() => handleDelete(b.id)}><Trash2 className="h-3.5 w-3.5" /></Button>

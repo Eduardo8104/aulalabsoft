@@ -47,20 +47,20 @@ function PublishersPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-semibold tracking-tight">Editoras</h1><p className="text-sm text-muted-foreground">{data.length} editoras</p></div>
+      <div className="flex items-center justify-between border-b border-border pb-4">
+        <div><h1 className="text-2xl font-display font-bold tracking-tight">Editoras</h1><p className="text-sm text-muted-foreground mt-0.5">{data.length} editoras</p></div>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Nova</Button>
       </div>
       <Card><CardContent className="p-0">
         <table className="w-full text-sm">
           <thead className="bg-muted/50"><tr className="text-left">
-            <th className="p-3 font-medium">Código</th><th className="p-3 font-medium">Nome</th><th className="p-3 font-medium">E-mail</th><th className="p-3 font-medium">Telefone</th><th></th>
+            <th className="p-3 font-semibold">Código</th><th className="p-3 font-semibold">Nome</th><th className="p-3 font-semibold">E-mail</th><th className="p-3 font-semibold">Telefone</th><th></th>
           </tr></thead>
-          <tbody>
+          <tbody className="divide-y divide-border">
             {data.map((p: any) => (
-              <tr key={p.id} className="border-t border-border">
-                <td className="p-3 font-mono text-xs">{p.code}</td>
-                <td className="p-3 font-medium">{p.name}</td>
+              <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                <td className="p-3 font-mono text-xs text-muted-foreground">{p.code}</td>
+                <td className="p-3 font-medium text-foreground">{p.name}</td>
                 <td className="p-3 text-muted-foreground">{p.email ?? "—"}</td>
                 <td className="p-3 text-muted-foreground">{p.phone ?? "—"}</td>
                 <td className="p-3 text-right space-x-1">

@@ -50,8 +50,7 @@ export const getCurrentUser = createServerFn({ method: "GET" })
 export const ensureUserSetup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { userId, claims } = context;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { userId, supabase, claims } = context;
     const email = (claims.email as string | undefined) ?? null;
     const name =
       (claims.user_metadata as Record<string, unknown> | undefined)?.full_name ??
@@ -59,12 +58,12 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
       null;
 
     // Ensure profile row
-    await supabaseAdmin
+    await supabase
       .from("profiles")
       .upsert({ id: userId, email, name: name as string | null }, { onConflict: "id" });
 
     // Existing roles
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
@@ -72,24 +71,24 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
 
     if (have.size === 0) {
       // First user -> admin; else default to "user"
-      const { count } = await supabaseAdmin
+      const { count } = await supabase
         .from("user_roles")
         .select("*", { count: "exact", head: true })
         .eq("role", "admin");
       const role = (count ?? 0) === 0 ? "admin" : "user";
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role });
+      await supabase.from("user_roles").insert({ user_id: userId, role });
       have.add(role);
     }
 
     // Auto-promote librarian by email match in members table
     if (email && !have.has("librarian") && !have.has("admin")) {
-      const { data: m } = await supabaseAdmin
+      const { data: m } = await supabase
         .from("members")
         .select("member_role")
         .ilike("email", email)
         .maybeSingle();
       if (m?.member_role && /bibliotec/i.test(m.member_role)) {
-        await supabaseAdmin
+        await supabase
           .from("user_roles")
           .insert({ user_id: userId, role: "librarian" });
         have.add("librarian");
@@ -476,8 +475,7 @@ export const getCatalog = createServerFn({ method: "GET" })
 export const getMyLoans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await context.supabase
       .from("loans")
       .select("id, status, loan_date, due_date, return_date, books(title, code)")
       .eq("requested_by", context.userId)
@@ -648,6 +646,7 @@ function normalizeIsbn(raw: string): string {
 async function uploadCoverFromUrl(
   imageUrl: string,
   userId: string,
+  supabase: any,
 ): Promise<string | null> {
   try {
     const res = await fetch(imageUrl);
@@ -660,12 +659,11 @@ async function uploadCoverFromUrl(
     if (buf.byteLength === 0 || buf.byteLength > 5 * 1024 * 1024) return null;
     const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
     const path = `${userId}/isbn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: upErr } = await supabaseAdmin.storage
+    const { error: upErr } = await supabase.storage
       .from("book-covers")
       .upload(path, buf, { contentType, upsert: false });
     if (upErr) { console.error("[isbn] upload", upErr); return null; }
-    const { data: signed } = await supabaseAdmin.storage
+    const { data: signed } = await supabase.storage
       .from("book-covers")
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     return signed?.signedUrl ?? null;
@@ -679,9 +677,8 @@ export const lookupBookByIsbn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => isbnInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const rolesRes = await supabaseAdmin
+    const { userId, supabase } = context;
+    const rolesRes = await supabase
       .from("user_roles").select("role").eq("user_id", userId);
     const rs = (rolesRes.data ?? []).map((r) => r.role);
     if (!rs.includes("admin") && !rs.includes("librarian")) {
@@ -755,7 +752,7 @@ export const lookupBookByIsbn = createServerFn({ method: "POST" })
     }
 
     let coverUrl: string | null = null;
-    if (coverSource) coverUrl = await uploadCoverFromUrl(coverSource, userId);
+    if (coverSource) coverUrl = await uploadCoverFromUrl(coverSource, userId, supabase);
 
     return { isbn, title, author, publisher, publication_year: year, category, cover_url: coverUrl };
   });

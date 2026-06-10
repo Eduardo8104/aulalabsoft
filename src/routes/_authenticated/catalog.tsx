@@ -66,21 +66,21 @@ function CatalogPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Catálogo</h1>
-        <p className="text-sm text-muted-foreground">{(data as any[]).length} títulos disponíveis para consulta.</p>
+      <div className="border-b border-border pb-4">
+        <h1 className="text-2xl font-display font-bold tracking-tight">Catálogo</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{(data as any[]).length} títulos disponíveis para consulta.</p>
       </div>
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Buscar por título, autor ou editora..." value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((b: any) => {
           const available = (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0);
           return (
-            <Card key={b.id}>
+            <Card key={b.id} className="hover:-translate-y-0.5 hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 flex gap-3">
-                <div className="h-20 w-14 shrink-0 rounded-sm bg-muted overflow-hidden">
+                <div className="h-24 w-16 shrink-0 bg-muted overflow-hidden">
                   <img
                     src={b.cover_url || noCover}
                     onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
@@ -88,12 +88,14 @@ function CatalogPage() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{b.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{b.author}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{b.publishers?.name ?? "—"}</p>
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div>
+                    <p className="font-display font-bold text-sm truncate">{b.title}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{b.author}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{b.publishers?.name ?? "—"}</p>
+                  </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className={`text-xs ${available > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                    <span className={`text-xs font-medium ${available > 0 ? "text-success" : "text-muted-foreground"}`}>
                       {available > 0 ? `${available} disponível(is)` : "Indisponível"}
                     </span>
                     <Button size="sm" disabled={available <= 0} onClick={() => setOpen(b)}>Solicitar</Button>
@@ -103,7 +105,7 @@ function CatalogPage() {
             </Card>
           );
         })}
-        {filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhum livro encontrado.</p>}
+        {filtered.length === 0 && <p className="text-sm text-muted-foreground col-span-full text-center py-8">Nenhum livro encontrado.</p>}
       </div>
 
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>

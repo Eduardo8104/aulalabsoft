@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp } from "lucide-react";
+import { Library } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { lovable } from "@/integrations/lovable/index";
 
@@ -71,15 +71,14 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm border-border/50">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="relative w-full max-w-sm border-border">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-3">
-            <TrendingUp className="h-8 w-8 text-primary" />
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center bg-primary shadow-sm">
+            <Library className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-lg">BibliotecaPro</CardTitle>
-          <CardDescription>{isSignUp ? "Crie sua conta" : "Entre para continuar"}</CardDescription>
-
+          <CardTitle className="text-xl font-display font-bold">BibliotecaPro</CardTitle>
+          <CardDescription className="text-xs uppercase tracking-wider">{isSignUp ? "Crie sua conta" : "Entre para acessar"}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
@@ -101,23 +100,23 @@ function LoginPage() {
 
           <div className="flex items-center gap-3">
             <Separator className="flex-1" />
-            <span className="text-xs text-muted-foreground">or</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">ou</span>
             <Separator className="flex-1" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-1.5">
-                <Label className="text-xs">Name</Label>
+                <Label className="text-xs uppercase tracking-wider">Name</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="h-9 text-sm" />
               </div>
             )}
             <div className="space-y-1.5">
-              <Label className="text-xs">Email</Label>
+              <Label className="text-xs uppercase tracking-wider">Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Password</Label>
+              <Label className="text-xs uppercase tracking-wider">Password</Label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="h-9 text-sm" />
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
@@ -126,7 +125,7 @@ function LoginPage() {
             </Button>
             <p className="text-center text-xs text-muted-foreground">
               {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError(""); }} className="text-primary hover:underline">
+              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError(""); }} className="text-primary hover:underline font-medium">
                 {isSignUp ? "Sign in" : "Sign up"}
               </button>
             </p>

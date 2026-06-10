@@ -99,17 +99,17 @@ function MembersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr className="text-left">
-              <th className="p-3 font-medium">Código</th>
-              <th className="p-3 font-medium">Nome</th>
-              <th className="p-3 font-medium">E-mail</th>
-              <th className="p-3 font-medium">{showGrade ? "Turma" : "Função"}</th>
+              <th className="p-3 font-semibold">Código</th>
+              <th className="p-3 font-semibold">Nome</th>
+              <th className="p-3 font-semibold">E-mail</th>
+              <th className="p-3 font-semibold">{showGrade ? "Turma" : "Função"}</th>
               <th></th>
             </tr></thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {rows.map((m: any) => (
-                <tr key={m.id} className="border-t border-border">
-                  <td className="p-3 font-mono text-xs">{m.code}</td>
-                  <td className="p-3 font-medium">{m.full_name}</td>
+                <tr key={m.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="p-3 font-mono text-xs text-muted-foreground">{m.code}</td>
+                  <td className="p-3 font-medium text-foreground">{m.full_name}</td>
                   <td className="p-3 text-muted-foreground">{m.email ?? "—"}</td>
                   <td className="p-3 text-muted-foreground">{(showGrade ? m.grade : m.member_role) ?? "—"}</td>
                   <td className="p-3 text-right space-x-1">
@@ -128,10 +128,10 @@ function MembersPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Membros</h1>
-          <p className="text-sm text-muted-foreground">{students.length} alunos · {staff.length} funcionários</p>
+          <h1 className="text-2xl font-display font-bold tracking-tight">Membros</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{students.length} alunos · {staff.length} funcionários</p>
         </div>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4 mr-1.5" />Novo membro</Button>
       </div>

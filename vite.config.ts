@@ -2,6 +2,7 @@ import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { nitro } from "nitro/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -161,16 +162,26 @@ function devServerFnErrorLogger() {
 }
 
 export default defineConfig(({ command, mode }) => {
-  // Use Cloudflare Workers plugin for builds (produces worker output)
-  // Skip for dev server (command=serve) since workerd runtime isn't available
-  const useCloudflare = command === "build";
+  // Use platform-specific plugins for production builds
+  // Skip for dev server (command=serve) since runtime isn't available
+  // Cloudflare Workers: @cloudflare/vite-plugin
+  // Vercel / other: nitro/vite
+  const isBuild = command === "build";
+  const useCloudflare = isBuild && !process.env.VERCEL;
+  const useNitro = isBuild && !!process.env.VERCEL;
 
   // Load VITE_ env vars and define them for SSR
-  // Note: loadEnv strips the prefix, so we add it back
+  // loadEnv reads from .env files; for Vercel, also pick up VITE_ vars from process.env
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const envDefine: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     envDefine[`import.meta.env.${key}`] = JSON.stringify(value);
+  }
+  // On Vercel, env vars from dashboard are in process.env, not .env files
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("VITE_") && !(`import.meta.env.${key}` in envDefine)) {
+      envDefine[`import.meta.env.${key}`] = JSON.stringify(process.env[key]);
+    }
   }
 
   return {
@@ -193,6 +204,7 @@ export default defineConfig(({ command, mode }) => {
       devClientErrorLogger(),
       devServerFnErrorLogger(),
       ...(useCloudflare ? [cloudflare({ viteEnvironment: { name: "ssr" } })] : []),
+      ...(useNitro ? [nitro()] : []),
       tanstackStart(),
       viteReact(),
       mode === "development" && componentTagger(),

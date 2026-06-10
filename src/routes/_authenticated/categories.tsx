@@ -33,7 +33,10 @@ function CategoriesPage() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div><h1 className="text-2xl font-semibold tracking-tight">Categorias</h1><p className="text-sm text-muted-foreground">{data.length} categorias</p></div>
+      <div className="border-b border-border pb-4">
+        <h1 className="text-2xl font-display font-bold tracking-tight">Categorias</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{data.length} categorias</p>
+      </div>
       <div className="flex gap-2 max-w-md">
         <Input placeholder="Nome da categoria" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <Button onClick={add}><Plus className="h-4 w-4" /></Button>
@@ -41,8 +44,8 @@ function CategoriesPage() {
       <Card><CardContent className="p-0">
         <ul className="divide-y divide-border">
           {data.map((c: any) => (
-            <li key={c.id} className="flex items-center justify-between p-3 text-sm">
-              <span>{c.name}</span>
+            <li key={c.id} className="flex items-center justify-between p-3 text-sm hover:bg-muted/30 transition-colors">
+              <span className="font-medium text-foreground">{c.name}</span>
               <Button size="sm" variant="ghost" onClick={async () => {
                 if (!confirm("Excluir?")) return;
                 try { await del({ data: { id: c.id } }); qc.invalidateQueries({ queryKey: ["categories"] }); }
