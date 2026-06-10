@@ -4,7 +4,7 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { booksQueryOptions, publishersQueryOptions, categoriesQueryOptions } from "@/lib/query-options";
-import { upsertBook, deleteBook, uploadBookCover } from "@/lib/server-functions";
+import { upsertBook, deleteBook, uploadBookCover, lookupBookByIsbn } from "@/lib/server-functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
