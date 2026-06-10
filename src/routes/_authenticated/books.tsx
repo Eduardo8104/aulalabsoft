@@ -4,13 +4,13 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { booksQueryOptions, publishersQueryOptions, categoriesQueryOptions } from "@/lib/query-options";
-import { upsertBook, deleteBook, uploadBookCover } from "@/lib/server-functions";
+import { upsertBook, deleteBook, uploadBookCover, lookupBookByIsbn } from "@/lib/server-functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Search } from "lucide-react";
 import { toast } from "sonner";
 import noCover from "@/assets/no-cover.svg";
 
@@ -48,6 +48,7 @@ function BooksPage() {
   const qc = useQueryClient();
   const upsert = useServerFn(upsertBook);
   const upload = useServerFn(uploadBookCover);
+  const lookup = useServerFn(lookupBookByIsbn);
   const del = useServerFn(deleteBook);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -56,7 +57,10 @@ function BooksPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [looking, setLooking] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Reset cover state when dialog opens for a new/edit book
   useEffect(() => {
@@ -64,9 +68,46 @@ function BooksPage() {
       setCoverUrl(editing?.cover_url ?? "");
       setPreview(editing?.cover_url ?? "");
       setCoverFile(null);
+      setFormKey((k) => k + 1);
       if (fileRef.current) fileRef.current.value = "";
     }
   }, [open, editing]);
+
+  async function handleIsbnLookup() {
+    const form = formRef.current;
+    if (!form) return;
+    const isbnInput = form.elements.namedItem("isbn") as HTMLInputElement | null;
+    const raw = isbnInput?.value?.trim() ?? "";
+    if (!raw) { toast.error("Informe o ISBN antes de buscar."); return; }
+    setLooking(true);
+    try {
+      const r = await lookup({ data: { isbn: raw } });
+      const setVal = (name: string, v: string | number | null | undefined) => {
+        const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+        if (el && v != null && v !== "") el.value = String(v);
+      };
+      setVal("title", r.title);
+      setVal("author", r.author);
+      setVal("publication_year", r.publication_year);
+      if (r.cover_url) {
+        setCoverUrl(r.cover_url);
+        setPreview(r.cover_url);
+        setCoverFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+      }
+      const missing: string[] = [];
+      if (r.publisher) missing.push(`Editora sugerida: ${r.publisher}`);
+      if (r.category) missing.push(`Categoria sugerida: ${r.category}`);
+      toast.success(
+        "Dados preenchidos pelo ISBN." + (missing.length ? " " + missing.join(" • ") : ""),
+      );
+    } catch (err: any) {
+      toast.error(err?.message ?? "Não foi possível buscar este ISBN.");
+    } finally {
+      setLooking(false);
+    }
+  }
+
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -188,9 +229,17 @@ function BooksPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? "Editar livro" : "Novo livro"}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+          <form key={formKey} ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
             <div><Label>Código</Label><Input name="code" required defaultValue={editing?.code} /></div>
-            <div><Label>ISBN</Label><Input name="isbn" defaultValue={editing?.isbn ?? ""} /></div>
+            <div>
+              <Label>ISBN</Label>
+              <div className="flex gap-1.5">
+                <Input name="isbn" defaultValue={editing?.isbn ?? ""} placeholder="978..." />
+                <Button type="button" variant="outline" size="sm" onClick={handleIsbnLookup} disabled={looking} title="Buscar dados pelo ISBN">
+                  <Search className="h-3.5 w-3.5 mr-1" />{looking ? "Buscando..." : "Buscar"}
+                </Button>
+              </div>
+            </div>
             <div className="col-span-2"><Label>Título</Label><Input name="title" required defaultValue={editing?.title} /></div>
             <div><Label>Autor</Label><Input name="author" required defaultValue={editing?.author} /></div>
             <div><Label>Ano</Label><Input name="publication_year" type="number" defaultValue={editing?.publication_year ?? ""} /></div>
