@@ -632,3 +632,130 @@ export const uploadBookCover = createServerFn({ method: "POST" })
     }
     return { url: signed.signedUrl, path };
   });
+
+// ---------- Lookup book metadata by ISBN ----------
+// Uses Google Books first, falls back to Open Library. If a cover image is
+// found, downloads it and uploads to the "book-covers" bucket so it's served
+// from our own storage (stable signed URL).
+const isbnInput = z.object({
+  isbn: z.string().trim().min(10).max(20).regex(/^[0-9Xx\-\s]+$/),
+});
+
+function normalizeIsbn(raw: string): string {
+  return raw.replace(/[\s-]/g, "").toUpperCase();
+}
+
+async function uploadCoverFromUrl(
+  imageUrl: string,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) return null;
+    const ct = (res.headers.get("content-type") ?? "image/jpeg").toLowerCase();
+    const contentType =
+      ct.includes("png") ? "image/png" :
+      ct.includes("webp") ? "image/webp" : "image/jpeg";
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength === 0 || buf.byteLength > 5 * 1024 * 1024) return null;
+    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+    const path = `${userId}/isbn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("book-covers")
+      .upload(path, buf, { contentType, upsert: false });
+    if (upErr) { console.error("[isbn] upload", upErr); return null; }
+    const { data: signed } = await supabaseAdmin.storage
+      .from("book-covers")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    return signed?.signedUrl ?? null;
+  } catch (err) {
+    console.error("[isbn] cover fetch", err);
+    return null;
+  }
+}
+
+export const lookupBookByIsbn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => isbnInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const rolesRes = await supabaseAdmin
+      .from("user_roles").select("role").eq("user_id", userId);
+    const rs = (rolesRes.data ?? []).map((r) => r.role);
+    if (!rs.includes("admin") && !rs.includes("librarian")) {
+      throw new Error("Apenas administradores podem buscar por ISBN.");
+    }
+
+    const isbn = normalizeIsbn(data.isbn);
+    if (isbn.length !== 10 && isbn.length !== 13) {
+      throw new Error("ISBN inválido. Use 10 ou 13 dígitos.");
+    }
+
+    let title: string | null = null;
+    let author: string | null = null;
+    let publisher: string | null = null;
+    let year: number | null = null;
+    let category: string | null = null;
+    let coverSource: string | null = null;
+
+    // 1) Google Books
+    try {
+      const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+      if (r.ok) {
+        const j: any = await r.json();
+        const v = j?.items?.[0]?.volumeInfo;
+        if (v) {
+          title = v.title ?? null;
+          author = Array.isArray(v.authors) ? v.authors.join(", ") : null;
+          publisher = v.publisher ?? null;
+          const d = v.publishedDate ?? "";
+          const yMatch = String(d).match(/\d{4}/);
+          year = yMatch ? Number(yMatch[0]) : null;
+          category = Array.isArray(v.categories) ? v.categories[0] : null;
+          const img = v.imageLinks ?? {};
+          coverSource =
+            img.extraLarge ?? img.large ?? img.medium ?? img.small ?? img.thumbnail ?? img.smallThumbnail ?? null;
+          if (coverSource) coverSource = coverSource.replace(/^http:/, "https:");
+        }
+      }
+    } catch (err) { console.error("[isbn] google", err); }
+
+    // 2) Open Library fallback (also great for covers)
+    if (!title || !coverSource) {
+      try {
+        const r = await fetch(
+          `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`,
+        );
+        if (r.ok) {
+          const j: any = await r.json();
+          const v = j?.[`ISBN:${isbn}`];
+          if (v) {
+            title = title ?? v.title ?? null;
+            author = author ?? (Array.isArray(v.authors) ? v.authors.map((a: any) => a.name).join(", ") : null);
+            publisher = publisher ?? (Array.isArray(v.publishers) ? v.publishers[0]?.name : null);
+            if (!year && v.publish_date) {
+              const m = String(v.publish_date).match(/\d{4}/);
+              if (m) year = Number(m[0]);
+            }
+            category = category ?? (Array.isArray(v.subjects) ? v.subjects[0]?.name : null);
+            coverSource = coverSource ?? v.cover?.large ?? v.cover?.medium ?? v.cover?.small ?? null;
+          }
+        }
+        if (!coverSource) {
+          // Open Library Covers API (returns image bytes)
+          coverSource = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+        }
+      } catch (err) { console.error("[isbn] openlibrary", err); }
+    }
+
+    if (!title && !author && !coverSource) {
+      throw new Error("Nenhum livro encontrado para este ISBN.");
+    }
+
+    let coverUrl: string | null = null;
+    if (coverSource) coverUrl = await uploadCoverFromUrl(coverSource, userId);
+
+    return { isbn, title, author, publisher, publication_year: year, category, cover_url: coverUrl };
+  });
