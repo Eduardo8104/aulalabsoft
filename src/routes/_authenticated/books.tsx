@@ -48,6 +48,7 @@ function BooksPage() {
   const qc = useQueryClient();
   const upsert = useServerFn(upsertBook);
   const upload = useServerFn(uploadBookCover);
+  const lookup = useServerFn(lookupBookByIsbn);
   const del = useServerFn(deleteBook);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -56,7 +57,10 @@ function BooksPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [looking, setLooking] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Reset cover state when dialog opens for a new/edit book
   useEffect(() => {
@@ -64,9 +68,46 @@ function BooksPage() {
       setCoverUrl(editing?.cover_url ?? "");
       setPreview(editing?.cover_url ?? "");
       setCoverFile(null);
+      setFormKey((k) => k + 1);
       if (fileRef.current) fileRef.current.value = "";
     }
   }, [open, editing]);
+
+  async function handleIsbnLookup() {
+    const form = formRef.current;
+    if (!form) return;
+    const isbnInput = form.elements.namedItem("isbn") as HTMLInputElement | null;
+    const raw = isbnInput?.value?.trim() ?? "";
+    if (!raw) { toast.error("Informe o ISBN antes de buscar."); return; }
+    setLooking(true);
+    try {
+      const r = await lookup({ data: { isbn: raw } });
+      const setVal = (name: string, v: string | number | null | undefined) => {
+        const el = form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+        if (el && v != null && v !== "") el.value = String(v);
+      };
+      setVal("title", r.title);
+      setVal("author", r.author);
+      setVal("publication_year", r.publication_year);
+      if (r.cover_url) {
+        setCoverUrl(r.cover_url);
+        setPreview(r.cover_url);
+        setCoverFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+      }
+      const missing: string[] = [];
+      if (r.publisher) missing.push(`Editora sugerida: ${r.publisher}`);
+      if (r.category) missing.push(`Categoria sugerida: ${r.category}`);
+      toast.success(
+        "Dados preenchidos pelo ISBN." + (missing.length ? " " + missing.join(" • ") : ""),
+      );
+    } catch (err: any) {
+      toast.error(err?.message ?? "Não foi possível buscar este ISBN.");
+    } finally {
+      setLooking(false);
+    }
+  }
+
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
