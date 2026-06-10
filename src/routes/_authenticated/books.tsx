@@ -229,9 +229,17 @@ function BooksPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? "Editar livro" : "Novo livro"}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+          <form key={formKey} ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
             <div><Label>Código</Label><Input name="code" required defaultValue={editing?.code} /></div>
-            <div><Label>ISBN</Label><Input name="isbn" defaultValue={editing?.isbn ?? ""} /></div>
+            <div>
+              <Label>ISBN</Label>
+              <div className="flex gap-1.5">
+                <Input name="isbn" defaultValue={editing?.isbn ?? ""} placeholder="978..." />
+                <Button type="button" variant="outline" size="sm" onClick={handleIsbnLookup} disabled={looking} title="Buscar dados pelo ISBN">
+                  <Search className="h-3.5 w-3.5 mr-1" />{looking ? "Buscando..." : "Buscar"}
+                </Button>
+              </div>
+            </div>
             <div className="col-span-2"><Label>Título</Label><Input name="title" required defaultValue={editing?.title} /></div>
             <div><Label>Autor</Label><Input name="author" required defaultValue={editing?.author} /></div>
             <div><Label>Ano</Label><Input name="publication_year" type="number" defaultValue={editing?.publication_year ?? ""} /></div>
