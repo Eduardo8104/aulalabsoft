@@ -502,7 +502,7 @@ export const requestLoan = createServerFn({ method: "POST" })
       .select("total_quantity, borrowed_quantity")
       .eq("id", data.book_id)
       .single();
-    if (!book) throw new Error("Livro não encontrado.");
+    if (!book) throw new Error(`Livro ${data.book_id} não encontrado.`);
     if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) {
       throw new Error("Sem exemplares disponíveis.");
     }
