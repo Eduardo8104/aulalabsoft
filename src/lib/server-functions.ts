@@ -373,7 +373,7 @@ export const deleteMember = createServerFn({ method: "POST" })
     const { error: deleteLoansError } = await supabase.from("loans").delete().eq("member_id", data.id);
     if (deleteLoansError) throw dbError(deleteLoansError);
 
-    const { error } = await supabaseAdmin.from("members").delete().eq("id", data.id);
+    const { error } = await supabase.from("members").delete().eq("id", data.id);
     if (error) throw dbError(error);
     return { ok: true };
   });
