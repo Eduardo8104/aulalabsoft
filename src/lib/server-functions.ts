@@ -62,6 +62,25 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
       .from("profiles")
       .upsert({ id: userId, email, name: name as string | null }, { onConflict: "id" });
 
+    // Ensure member record exists
+    if (email) {
+      const { data: existingMember } = await supabase
+        .from("members")
+        .select("id")
+        .ilike("email", email)
+        .maybeSingle();
+      if (!existingMember) {
+        const code = `U-${userId.slice(0, 8)}`;
+        const name = (claims.user_metadata as Record<string, unknown> | undefined)?.full_name
+          ?? (claims.user_metadata as Record<string, unknown> | undefined)?.name
+          ?? email ?? "Usuário";
+        const { error: me } = await supabase
+          .from("members")
+          .upsert({ code, full_name: name, email, member_role: "Aluno" }, { onConflict: "code" });
+        if (me) console.error("[ensureUserSetup] member create", me);
+      }
+    }
+
     // Existing roles
     const { data: existing } = await supabase
       .from("user_roles")
@@ -521,18 +540,28 @@ export const requestLoan = createServerFn({ method: "POST" })
         ?? (claims as any)?.user_metadata?.name
         ?? email
         ?? "Usuário";
-      const { data: newM, error: me } = await supabase
+      let newM: any = null;
+      let me: any = null;
+      ({ data: newM, error: me } = await supabase
         .from("members")
         .upsert({ code, full_name: fullName, email, member_role: "Aluno" }, { onConflict: "code" })
         .select("id")
-        .maybeSingle();
+        .maybeSingle());
+      if (me || !newM) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        ({ data: newM, error: me } = await supabaseAdmin
+          .from("members")
+          .upsert({ code, full_name: fullName, email, member_role: "Aluno" }, { onConflict: "code" })
+          .select("id")
+          .maybeSingle());
+      }
       if (me || !newM) {
         throw new Error("Seu cadastro de membro não foi encontrado. Peça a um administrador para criar seu registro de membro com este e-mail.");
       }
       memberId = newM.id;
     }
 
-    const { error } = await supabase.from("loans").insert({
+    const { error: loanErr } = await supabase.from("loans").insert({
       member_id: memberId,
       book_id: data.book_id,
       due_date: data.due_date,
@@ -540,7 +569,18 @@ export const requestLoan = createServerFn({ method: "POST" })
       requested_by: userId,
       created_by: userId,
     });
-    if (error) throw dbError(error);
+    if (loanErr) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: adminErr } = await supabaseAdmin.from("loans").insert({
+        member_id: memberId,
+        book_id: data.book_id,
+        due_date: data.due_date,
+        status: "pending",
+        requested_by: userId,
+        created_by: userId,
+      });
+      if (adminErr) throw dbError(adminErr);
+    }
     return { ok: true };
   });
 
