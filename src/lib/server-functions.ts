@@ -556,7 +556,8 @@ export const requestLoan = createServerFn({ method: "POST" })
           .maybeSingle());
       }
       if (me || !newM) {
-        throw new Error("Seu cadastro de membro não foi encontrado. Peça a um administrador para criar seu registro de membro com este e-mail.");
+        const reason = me ? `Erro: ${me.message} (${me.code || "sem código"})` : "Membro não retornado após inserção.";
+        throw new Error(`Não foi possível criar seu cadastro. ${reason}`);
       }
       memberId = newM.id;
     }
