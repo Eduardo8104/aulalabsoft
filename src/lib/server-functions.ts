@@ -497,12 +497,19 @@ export const requestLoan = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Validate book has copies
+    const { data: allBooks } = await supabaseAdmin
+      .from("books")
+      .select("id, title");
     const { data: book } = await supabaseAdmin
       .from("books")
       .select("total_quantity, borrowed_quantity")
       .eq("id", data.book_id)
-      .single();
-    if (!book) throw new Error(`Livro ${data.book_id} não encontrado.`);
+      .maybeSingle();
+    if (!book) {
+      const ids = (allBooks ?? []).map((b: any) => b.id).join(", ");
+      const titles = (allBooks ?? []).map((b: any) => `${b.id.slice(0,8)}…`).join(", ");
+      throw new Error(`Livro não encontrado. IDs no banco: ${titles || "vazio"}. Buscado: ${data.book_id}`);
+    }
     if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) {
       throw new Error("Sem exemplares disponíveis.");
     }
