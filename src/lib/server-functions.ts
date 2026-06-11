@@ -75,7 +75,7 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
         .from("user_roles")
         .select("*", { count: "exact", head: true })
         .eq("role", "admin");
-      const role = (count ?? 0) === 0 ? "admin" : "user";
+      const role = (count ?? 0) === 0 ? "admin" : "Aluno";
       await supabase.from("user_roles").insert({ user_id: userId, role });
       have.add(role);
     }
