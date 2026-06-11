@@ -523,7 +523,7 @@ export const requestLoan = createServerFn({ method: "POST" })
         ?? "Usuário";
       const { data: newM, error: me } = await supabase
         .from("members")
-        .upsert({ code, full_name: fullName, email }, { onConflict: "code" })
+        .upsert({ code, full_name: fullName, email, member_role: "Aluno" }, { onConflict: "code" })
         .select("id")
         .maybeSingle();
       if (me || !newM) {
