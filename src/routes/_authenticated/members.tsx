@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/members")({
@@ -96,29 +96,47 @@ function MembersPage() {
   function renderTable(rows: any[], showGrade: boolean) {
     return (
       <Card><CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr className="text-left">
-              <th className="p-3 font-semibold">Código</th>
-              <th className="p-3 font-semibold">Nome</th>
-              <th className="p-3 font-semibold">E-mail</th>
-              <th className="p-3 font-semibold">{showGrade ? "Turma" : "Função"}</th>
-              <th></th>
-            </tr></thead>
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Código</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Nome</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">E-mail</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">{showGrade ? "Turma" : "Função"}</th>
+                <th className="p-3 w-20"></th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-border">
               {rows.map((m: any) => (
-                <tr key={m.id} className="hover:bg-muted/30 transition-colors">
+                <tr key={m.id} className="hover:bg-muted/20 transition-colors">
                   <td className="p-3 font-mono text-xs text-muted-foreground">{m.code}</td>
                   <td className="p-3 font-medium text-foreground">{m.full_name}</td>
                   <td className="p-3 text-muted-foreground">{m.email ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">{(showGrade ? m.grade : m.member_role) ?? "—"}</td>
-                  <td className="p-3 text-right space-x-1">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(m.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <td className="p-3">
+                    <span className="text-muted-foreground text-xs">
+                      {showGrade ? m.grade : m.member_role} {!showGrade && m.course && <span className="text-muted-foreground/60">· {m.course}</span>}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => { setEditing(m); setOpen(true); }} className="h-7 w-7 p-0"><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDelete(m.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum registro.</td></tr>}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Users className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground font-medium">Nenhum {showGrade ? "aluno" : "funcionário"} encontrado</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">{search ? "Tente alterar a busca." : "Clique em \"Novo membro\" para adicionar."}</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -144,7 +162,10 @@ function MembersPage() {
 
         <TabsContent value="alunos" className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Input placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
             <Select value={grade} onValueChange={setGrade}>
               <SelectTrigger className="w-48"><SelectValue placeholder="Turma" /></SelectTrigger>
               <SelectContent>
@@ -157,22 +178,25 @@ function MembersPage() {
         </TabsContent>
 
         <TabsContent value="funcionarios" className="space-y-3">
-          <Input placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Buscar por nome..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           {renderTable(filteredStaff, false)}
         </TabsContent>
       </Tabs>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar membro" : "Novo membro"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Plus className="h-4 w-4 text-secondary" />{editing ? "Editar membro" : "Novo membro"}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <Label>Código (automático)</Label>
+              <Label className="text-xs uppercase tracking-wider">Código (automático)</Label>
               <Input value={previewCode} readOnly disabled className="font-mono" />
             </div>
             {fields.map(([n, l]) => (
               <div key={n} className={n === "full_name" ? "col-span-2" : ""}>
-                <Label>{l}</Label>
+                <Label className="text-xs uppercase tracking-wider">{l}</Label>
                 <Input name={n} required={n === "full_name"} defaultValue={editing?.[n] ?? ""} />
               </div>
             ))}

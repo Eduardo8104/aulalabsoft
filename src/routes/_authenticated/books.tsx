@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, X, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, X, Search, BookOpen, FileText } from "lucide-react";
 import { toast } from "sonner";
 import noCover from "@/assets/no-cover.svg";
 
@@ -62,7 +62,6 @@ function BooksPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Reset cover state when dialog opens for a new/edit book
   useEffect(() => {
     if (open) {
       setCoverUrl(editing?.cover_url ?? "");
@@ -107,7 +106,6 @@ function BooksPage() {
       setLooking(false);
     }
   }
-
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -189,43 +187,80 @@ function BooksPage() {
         </div>
         <Button onClick={() => { setEditing(null); setOpen(true); }} className="shadow-sm"><Plus className="h-4 w-4 mr-1.5" />Novo livro</Button>
       </div>
-      <Input placeholder="Buscar por título ou autor..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Buscar por título ou autor..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
       <Card><CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr className="text-left">
-              <th className="p-3 font-semibold w-12">Capa</th>
-              <th className="p-3 font-semibold">Código</th><th className="p-3 font-semibold">Título</th><th className="p-3 font-semibold">Autor</th>
-              <th className="p-3 font-semibold">Editora</th><th className="p-3 font-semibold">Disponível</th><th className="p-3"></th>
-            </tr></thead>
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-14">Capa</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Código</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Título</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Autor</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Editora</th>
+                <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Disponível</th>
+                <th className="p-3 w-20"></th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((b: any) => (
-                <tr key={b.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="p-2">
-                    <img
-                      src={b.cover_url || noCover}
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
-                      alt={b.title}
-                      className="h-14 w-10 object-cover rounded-sm bg-muted shadow-sm"
-                    />
-                  </td>
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{b.code}</td>
-                  <td className="p-3 font-medium text-foreground">{b.title}</td>
-                  <td className="p-3 text-muted-foreground">{b.author}</td>
-                  <td className="p-3 text-muted-foreground">{b.publishers?.name ?? "—"}</td>
-                  <td className="p-3">
-                    <span className="inline-flex items-center gap-1 text-sm">
-                      <span className="font-semibold text-foreground">{(b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0)}</span>
-                      <span className="text-muted-foreground">/ {b.total_quantity}</span>
-                    </span>
-                  </td>
-                  <td className="p-3 text-right space-x-1">
-                    <Button size="sm" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(b.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              {filtered.map((b: any) => {
+                const available = (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0);
+                return (
+                  <tr key={b.id} className="hover:bg-muted/20 transition-colors group">
+                    <td className="p-2 pl-3">
+                      <img
+                        src={b.cover_url || noCover}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
+                        alt={b.title}
+                        className="h-14 w-10 object-cover bg-muted shadow-sm"
+                      />
+                    </td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{b.code}</td>
+                    <td className="p-3 font-medium text-foreground">{b.title}</td>
+                    <td className="p-3 text-muted-foreground">{b.author}</td>
+                    <td className="p-3 text-muted-foreground">{b.publishers?.name ?? <span className="text-muted-foreground/50">—</span>}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 max-w-[60px] h-1.5 bg-muted overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${available > 0 ? "bg-success" : "bg-destructive"}`}
+                            style={{ width: `${Math.min(100, (available / (b.total_quantity || 1)) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-foreground">{available}/{b.total_quantity}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="sm" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }} className="h-8 w-8 p-0">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(b.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <FileText className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground font-medium">Nenhum livro encontrado</p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        {search ? "Tente ajustar sua busca." : "Clique em \"Novo livro\" para adicionar."}
+                      </p>
+                    </div>
                   </td>
                 </tr>
-              ))}
-              {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum livro encontrado.</td></tr>}
+              )}
             </tbody>
           </table>
         </div>
@@ -233,11 +268,16 @@ function BooksPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{editing ? "Editar livro" : "Novo livro"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-secondary" />
+              {editing ? "Editar livro" : "Novo livro"}
+            </DialogTitle>
+          </DialogHeader>
           <form key={formKey} ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-            <div><Label>Código</Label><Input name="code" required defaultValue={editing?.code} /></div>
-            <div>
-              <Label>ISBN</Label>
+            <div className="space-y-1.5"><Label className="text-xs uppercase tracking-wider">Código</Label><Input name="code" required defaultValue={editing?.code} /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider">ISBN</Label>
               <div className="flex gap-1.5">
                 <Input name="isbn" defaultValue={editing?.isbn ?? ""} placeholder="978..." />
                 <Button type="button" variant="outline" size="sm" onClick={handleIsbnLookup} disabled={looking} title="Buscar dados pelo ISBN">
@@ -245,47 +285,41 @@ function BooksPage() {
                 </Button>
               </div>
             </div>
-            <div className="col-span-2"><Label>Título</Label><Input name="title" required defaultValue={editing?.title} /></div>
-            <div><Label>Autor</Label><Input name="author" required defaultValue={editing?.author} /></div>
-            <div><Label>Ano</Label><Input name="publication_year" type="number" defaultValue={editing?.publication_year ?? ""} /></div>
-            <div>
-              <Label>Editora</Label>
-              <select name="publisher_id" defaultValue={editing?.publisher_id ?? ""} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <div className="col-span-2 space-y-1.5"><Label className="text-xs uppercase tracking-wider">Título</Label><Input name="title" required defaultValue={editing?.title} /></div>
+            <div className="space-y-1.5"><Label className="text-xs uppercase tracking-wider">Autor</Label><Input name="author" required defaultValue={editing?.author} /></div>
+            <div className="space-y-1.5"><Label className="text-xs uppercase tracking-wider">Ano</Label><Input name="publication_year" type="number" defaultValue={editing?.publication_year ?? ""} /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider">Editora</Label>
+              <select name="publisher_id" defaultValue={editing?.publisher_id ?? ""} className="w-full h-9 border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
                 <option value="">—</option>
                 {publishers.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <div>
-              <Label>Categoria</Label>
-              <select name="category_id" defaultValue={editing?.category_id ?? ""} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider">Categoria</Label>
+              <select name="category_id" defaultValue={editing?.category_id ?? ""} className="w-full h-9 border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
                 <option value="">—</option>
                 {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div><Label>Quantidade total</Label><Input name="total_quantity" type="number" min={0} required defaultValue={editing?.total_quantity ?? 1} /></div>
-            <div className="col-span-2">
-              <Label>Capa do livro <span className="text-xs text-muted-foreground font-normal">(opcional, JPG/PNG/WEBP, máx. 5 MB)</span></Label>
-              <div className="mt-1.5 flex items-start gap-3">
-                <div className="h-28 w-20 shrink-0 rounded-sm border border-border bg-muted overflow-hidden">
+            <div className="space-y-1.5"><Label className="text-xs uppercase tracking-wider">Quantidade</Label><Input name="total_quantity" type="number" min={0} required defaultValue={editing?.total_quantity ?? 1} /></div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider">Capa <span className="text-xs text-muted-foreground font-normal">(opcional, JPG/PNG/WEBP)</span></Label>
+              <div className="mt-1 flex items-start gap-3">
+                <div className="h-28 w-20 shrink-0 border border-border bg-muted overflow-hidden">
                   <img
                     src={preview || noCover}
                     onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
-                    alt="Pré-visualização da capa"
+                    alt="Pré-visualização"
                     className="h-full w-full object-cover"
                   />
                 </div>
                 <div className="flex-1 space-y-2">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={onFileChange}
-                    className="hidden"
-                  />
+                  <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={onFileChange} className="hidden" />
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
                       <Upload className="h-3.5 w-3.5 mr-1.5" />
-                      {preview ? "Trocar imagem" : "Selecionar imagem"}
+                      {preview ? "Trocar" : "Selecionar"}
                     </Button>
                     {(preview || coverUrl) && (
                       <Button type="button" variant="ghost" size="sm" onClick={clearCover}>
@@ -293,20 +327,14 @@ function BooksPage() {
                       </Button>
                     )}
                   </div>
-                  {coverFile && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {coverFile.name} — {(coverFile.size / 1024).toFixed(0)} KB
-                    </p>
-                  )}
-                  {!coverFile && coverUrl && (
-                    <p className="text-xs text-muted-foreground truncate">Capa atual mantida.</p>
-                  )}
+                  {coverFile && <p className="text-xs text-muted-foreground truncate">{coverFile.name} — {(coverFile.size / 1024).toFixed(0)} KB</p>}
+                  {!coverFile && coverUrl && <p className="text-xs text-muted-foreground truncate">Capa atual mantida.</p>}
                 </div>
               </div>
             </div>
             <DialogFooter className="col-span-2">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={uploading}>Cancelar</Button>
-              <Button type="submit" disabled={uploading}>{uploading ? "Enviando imagem..." : "Salvar"}</Button>
+              <Button type="submit" disabled={uploading}>{uploading ? "Enviando..." : "Salvar"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
