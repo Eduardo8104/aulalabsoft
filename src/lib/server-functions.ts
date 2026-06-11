@@ -493,11 +493,10 @@ export const requestLoan = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { userId, supabase } = context;
 
     // Validate book has copies
-    const { data: book } = await supabaseAdmin
+    const { data: book } = await supabase
       .from("books")
       .select("total_quantity, borrowed_quantity")
       .eq("id", data.book_id)
@@ -508,11 +507,11 @@ export const requestLoan = createServerFn({ method: "POST" })
     }
 
     // Try to find a matching member record by user's email
-    const { data: claims } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const email = claims.user?.email ?? null;
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email ?? null;
     let memberId: string | null = null;
     if (email) {
-      const { data: m } = await supabaseAdmin
+      const { data: m } = await supabase
         .from("members")
         .select("id")
         .ilike("email", email)
@@ -522,11 +521,11 @@ export const requestLoan = createServerFn({ method: "POST" })
     if (!memberId) {
       // Create a placeholder member tied to this user
       const code = `U-${userId.slice(0, 8)}`;
-      const fullName = (claims.user?.user_metadata?.full_name as string)
-        ?? (claims.user?.user_metadata?.name as string)
+      const fullName = (userData.user?.user_metadata?.full_name as string)
+        ?? (userData.user?.user_metadata?.name as string)
         ?? email
         ?? "Usuário";
-      const { data: newM, error: me } = await supabaseAdmin
+      const { data: newM, error: me } = await supabase
         .from("members")
         .upsert({ code, full_name: fullName, email }, { onConflict: "code" })
         .select("id")
@@ -535,7 +534,7 @@ export const requestLoan = createServerFn({ method: "POST" })
       memberId = newM.id;
     }
 
-    const { error } = await supabaseAdmin.from("loans").insert({
+    const { error } = await supabase.from("loans").insert({
       member_id: memberId,
       book_id: data.book_id,
       due_date: data.due_date,
