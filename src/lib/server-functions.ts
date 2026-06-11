@@ -699,7 +699,9 @@ export const lookupBookByIsbn = createServerFn({ method: "POST" })
 
     // 1) Google Books
     try {
-      const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+      const apiKey = process.env.GOOGLE_BOOKS_API_KEY || process.env.VITE_GOOGLE_BOOKS_API_KEY || "";
+      const params = apiKey ? `q=isbn:${isbn}&key=${apiKey}` : `q=isbn:${isbn}`;
+      const r = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
       if (r.ok) {
         const j: any = await r.json();
         const v = j?.items?.[0]?.volumeInfo;
