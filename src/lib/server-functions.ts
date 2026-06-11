@@ -343,8 +343,8 @@ export const deleteMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: loans, error: loansError } = await supabaseAdmin
+    const { supabase } = context;
+    const { data: loans, error: loansError } = await supabase
       .from("loans")
       .select("id, book_id, status")
       .eq("member_id", data.id);
@@ -357,20 +357,20 @@ export const deleteMember = createServerFn({ method: "POST" })
 
     await Promise.all(
       activeBookIds.map(async (bookId) => {
-        const { data: book, error: bookError } = await supabaseAdmin
+        const { data: book, error: bookError } = await supabase
           .from("books")
           .select("borrowed_quantity")
           .eq("id", bookId)
-          .single();
+          .maybeSingle();
         if (bookError || !book) return;
-        await supabaseAdmin
+        await supabase
           .from("books")
           .update({ borrowed_quantity: Math.max(0, (book.borrowed_quantity ?? 0) - 1) })
           .eq("id", bookId);
       }),
     );
 
-    const { error: deleteLoansError } = await supabaseAdmin.from("loans").delete().eq("member_id", data.id);
+    const { error: deleteLoansError } = await supabase.from("loans").delete().eq("member_id", data.id);
     if (deleteLoansError) throw dbError(deleteLoansError);
 
     const { error } = await supabaseAdmin.from("members").delete().eq("id", data.id);
