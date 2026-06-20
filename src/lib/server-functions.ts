@@ -722,24 +722,30 @@ function normalizeIsbn(raw: string): string {
 async function uploadCoverFromUrl(
   imageUrl: string,
   userId: string,
-  supabase: any,
 ): Promise<string | null> {
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength < 1000 || buf.byteLength > 5 * 1024 * 1024) return null;
+
+    // Detect SVG placeholder (Open Library returns transparent SVG when no cover)
+    const head = buf.slice(0, 128).toString("utf8").toLowerCase();
+    if (head.includes("<svg") || head.includes("<html") || head.includes("<!doctype")) return null;
+
     const ct = (res.headers.get("content-type") ?? "image/jpeg").toLowerCase();
     const contentType =
       ct.includes("png") ? "image/png" :
       ct.includes("webp") ? "image/webp" : "image/jpeg";
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength === 0 || buf.byteLength > 5 * 1024 * 1024) return null;
     const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
     const path = `${userId}/isbn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error: upErr } = await supabase.storage
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: upErr } = await supabaseAdmin.storage
       .from("book-covers")
       .upload(path, buf, { contentType, upsert: false });
     if (upErr) { console.error("[isbn] upload", upErr); return null; }
-    const { data: signed } = await supabase.storage
+    const { data: signed } = await supabaseAdmin.storage
       .from("book-covers")
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     return signed?.signedUrl ?? null;
@@ -830,7 +836,7 @@ export const lookupBookByIsbn = createServerFn({ method: "POST" })
     }
 
     let coverUrl: string | null = null;
-    if (coverSource) coverUrl = await uploadCoverFromUrl(coverSource, userId, supabase);
+    if (coverSource) coverUrl = await uploadCoverFromUrl(coverSource, userId);
 
     return { isbn, title, author, publisher, publication_year: year, category, cover_url: coverUrl };
   });
