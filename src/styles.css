@@ -142,6 +142,38 @@
   --surface-foreground: #EDE9DD;
 }
 
+/* === Responsive tables: rows → cards on mobile === */
+@media (max-width: 767px) {
+  .responsive-table thead { display: none; }
+  .responsive-table tr {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+  .responsive-table td {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border: none;
+    font-size: 0.8125rem;
+  }
+  .responsive-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    width: 6rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted-foreground);
+  }
+  .responsive-table td:last-child { margin-top: 0.25rem; }
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   body {
@@ -278,6 +310,8 @@
     background: #B58B2A;
     display: inline-block;
   }
+
+  /* === SCROLLBAR === */
 
   /* === SCROLLBAR === */
   .custom-scrollbar::-webkit-scrollbar {

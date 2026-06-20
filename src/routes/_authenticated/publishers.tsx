@@ -53,7 +53,7 @@ function PublishersPage() {
       </div>
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm responsive-table">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Código</th>
@@ -66,11 +66,11 @@ function PublishersPage() {
             <tbody className="divide-y divide-border">
               {data.map((p: any) => (
                 <tr key={p.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{p.code}</td>
-                  <td className="p-3 font-medium text-foreground">{p.name}</td>
-                  <td className="p-3 text-muted-foreground">{p.email ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">{p.phone ?? "—"}</td>
-                  <td className="p-3 text-right">
+                  <td data-label="Código" className="p-3 font-mono text-xs text-muted-foreground">{p.code}</td>
+                  <td data-label="Nome" className="p-3 font-medium text-foreground">{p.name}</td>
+                  <td data-label="E-mail" className="p-3 text-muted-foreground">{p.email ?? "—"}</td>
+                  <td data-label="Telefone" className="p-3 text-muted-foreground">{p.phone ?? "—"}</td>
+                  <td data-label="Ações" className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button size="sm" variant="ghost" onClick={() => { setEditing(p); setOpen(true); }} className="h-7 w-7 p-0"><Pencil className="h-3.5 w-3.5" /></Button>
                       <Button size="sm" variant="ghost" onClick={async () => {

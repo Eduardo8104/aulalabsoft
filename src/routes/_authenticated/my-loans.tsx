@@ -47,7 +47,7 @@ function MyLoansPage() {
       </div>
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm responsive-table">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Livro</th>
@@ -61,10 +61,10 @@ function MyLoansPage() {
                 const overdue = l.status !== "returned" && l.due_date < today;
                 return (
                   <tr key={l.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-medium text-foreground">{l.books?.title ?? "—"}</td>
-                    <td className="p-3 text-muted-foreground">{l.loan_date}</td>
-                    <td className={`p-3 ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>{l.due_date}</td>
-                    <td className="p-3"><StatusBadge status={l.status} overdue={overdue} /></td>
+                    <td className="p-3 font-medium text-foreground" data-label="Livro">{l.books?.title ?? "—"}</td>
+                    <td className="p-3 text-muted-foreground" data-label="Solicitado em">{l.loan_date}</td>
+                    <td className={`p-3 ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`} data-label="Devolução">{l.due_date}</td>
+                    <td className="p-3" data-label="Status"><StatusBadge status={l.status} overdue={overdue} /></td>
                   </tr>
                 );
               })}

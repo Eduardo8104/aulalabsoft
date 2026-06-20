@@ -111,17 +111,17 @@ function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-4 gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold tracking-tight">Painel</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Visão geral da biblioteca.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/books">
-            <Button variant="outline" size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Novo livro</Button>
+          <Link to="/books" className="flex-1 md:flex-none">
+            <Button variant="outline" size="sm" className="w-full md:w-auto"><Plus className="h-3.5 w-3.5 mr-1.5" />Novo livro</Button>
           </Link>
-          <Link to="/loans">
-            <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Novo empréstimo</Button>
+          <Link to="/loans" className="flex-1 md:flex-none">
+            <Button size="sm" className="w-full md:w-auto"><Plus className="h-3.5 w-3.5 mr-1.5" />Novo empréstimo</Button>
           </Link>
         </div>
       </div>
@@ -147,7 +147,7 @@ function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={160}>
               <BarChart data={stockData} barCategoryGap="20%">
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6B8A7A" }} axisLine={false} tickLine={false} />
                 <YAxis hide />

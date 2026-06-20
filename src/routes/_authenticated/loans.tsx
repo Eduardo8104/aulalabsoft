@@ -95,7 +95,7 @@ function LoansPage() {
 
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm responsive-table">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">Código</th>
@@ -112,13 +112,13 @@ function LoansPage() {
                 const overdue = l.status !== "returned" && l.due_date < today;
                 return (
                   <tr key={l.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{l.code}</td>
-                    <td className="p-3 font-medium text-foreground">{l.members?.full_name}</td>
-                    <td className="p-3 text-foreground">{l.books?.title}</td>
-                    <td className="p-3 text-muted-foreground">{l.loan_date}</td>
-                    <td className={`p-3 ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`}>{l.due_date}</td>
-                    <td className="p-3"><StatusBadge status={l.status} overdue={overdue} /></td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 font-mono text-xs text-muted-foreground" data-label="Código">{l.code}</td>
+                    <td className="p-3 font-medium text-foreground" data-label="Membro">{l.members?.full_name}</td>
+                    <td className="p-3 text-foreground" data-label="Livro">{l.books?.title}</td>
+                    <td className="p-3 text-muted-foreground" data-label="Emprestado">{l.loan_date}</td>
+                    <td className={`p-3 ${overdue ? "text-destructive font-semibold" : "text-muted-foreground"}`} data-label="Devolução">{l.due_date}</td>
+                    <td className="p-3" data-label="Status"><StatusBadge status={l.status} overdue={overdue} /></td>
+                    <td className="p-3 text-right" data-label="">
                       <div className="flex items-center justify-end gap-1">
                         {l.status === "pending" && (
                           <>

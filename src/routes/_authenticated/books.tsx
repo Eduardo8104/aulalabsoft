@@ -195,7 +195,7 @@ function BooksPage() {
 
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm responsive-table">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground w-14">Capa</th>
@@ -212,7 +212,7 @@ function BooksPage() {
                 const available = (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0);
                 return (
                   <tr key={b.id} className="hover:bg-muted/20 transition-colors group">
-                    <td className="p-2 pl-3">
+                    <td data-label="Capa" className="p-2 pl-3">
                       <img
                         src={b.cover_url || noCover}
                         onError={(e) => { (e.currentTarget as HTMLImageElement).src = noCover; }}
@@ -220,11 +220,11 @@ function BooksPage() {
                         className="h-14 w-10 object-cover bg-muted shadow-sm"
                       />
                     </td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{b.code}</td>
-                    <td className="p-3 font-medium text-foreground">{b.title}</td>
-                    <td className="p-3 text-muted-foreground">{b.author}</td>
-                    <td className="p-3 text-muted-foreground">{b.publishers?.name ?? <span className="text-muted-foreground/50">—</span>}</td>
-                    <td className="p-3">
+                    <td data-label="Código" className="p-3 font-mono text-xs text-muted-foreground">{b.code}</td>
+                    <td data-label="Título" className="p-3 font-medium text-foreground">{b.title}</td>
+                    <td data-label="Autor" className="p-3 text-muted-foreground">{b.author}</td>
+                    <td data-label="Editora" className="p-3 text-muted-foreground">{b.publishers?.name ?? <span className="text-muted-foreground/50">—</span>}</td>
+                    <td data-label="Disponível" className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 max-w-[60px] h-1.5 bg-muted overflow-hidden">
                           <div
@@ -235,7 +235,7 @@ function BooksPage() {
                         <span className="text-xs font-medium text-foreground">{available}/{b.total_quantity}</span>
                       </div>
                     </td>
-                    <td className="p-3 text-right">
+                    <td data-label="Ações" className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button size="sm" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }} className="h-8 w-8 p-0">
                           <Pencil className="h-3.5 w-3.5" />

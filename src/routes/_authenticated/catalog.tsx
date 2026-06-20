@@ -74,7 +74,7 @@ function CatalogPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9" placeholder="Buscar por título, autor ou editora..." value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         {filtered.map((b: any) => {
           const available = (b.total_quantity ?? 0) - (b.borrowed_quantity ?? 0);
           return (
