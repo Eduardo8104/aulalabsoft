@@ -68,6 +68,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster richColors closeButton />
         <Scripts />
       </body>
     </html>
@@ -79,7 +80,6 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <Toaster richColors closeButton />
     </QueryClientProvider>
   );
 }

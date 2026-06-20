@@ -77,8 +77,8 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
           ?? email ?? "Usuário";
         const { error: me } = await supabase
           .from("members")
-          .upsert({ code, full_name: name, email, member_role: "Aluno" }, { onConflict: "code" });
-        if (me) console.error("[ensureUserSetup] member create", me);
+          .insert({ code, full_name: name, email, member_role: "Aluno" });
+        if (me) console.error("[ensureUserSetup] member create", me, code, email);
       }
     }
 
