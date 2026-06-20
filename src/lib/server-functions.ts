@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 
 // Map raw Postgres/PostgREST errors to safe user-facing messages.
@@ -81,20 +82,20 @@ export const ensureUserSetup = createServerFn({ method: "POST" })
       }
     }
 
-    // Existing roles
+    // Existing roles (trigger creates "user" on signup)
     const { data: existing } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
     const have = new Set((existing ?? []).map((r) => r.role));
 
+    // If no roles (trigger failed), try to bootstrap
     if (have.size === 0) {
-      // First user -> admin; else default to "user"
       const { count } = await supabase
         .from("user_roles")
         .select("*", { count: "exact", head: true })
         .eq("role", "admin");
-      const role = (count ?? 0) === 0 ? "admin" : "Aluno";
+      const role = (count ?? 0) === 0 ? "admin" : "user";
       await supabase.from("user_roles").insert({ user_id: userId, role });
       have.add(role);
     }
@@ -429,12 +430,29 @@ export const createLoan = createServerFn({ method: "POST" })
     if ((book.borrowed_quantity ?? 0) >= (book.total_quantity ?? 0)) {
       throw new Error("Sem exemplares disponíveis deste livro.");
     }
+    let requested_by: string | null = null;
+    const { data: member } = await supabase
+      .from("members")
+      .select("email")
+      .eq("id", data.member_id)
+      .single();
+    if (member?.email) {
+      try {
+        const { data: users } = await supabaseAdmin.auth.admin.listUsers({ perPage: 10000 });
+        const authUser = users?.users?.find((u) => u.email === member.email);
+        if (authUser) requested_by = authUser.id;
+      } catch (e) {
+        console.error("Failed to look up auth user for requested_by", e);
+      }
+    }
+
     const { error: le } = await supabase.from("loans").insert({
       member_id: data.member_id,
       book_id: data.book_id,
       due_date: data.due_date,
       status: "active",
       created_by: userId,
+      requested_by,
     });
     if (le) throw dbError(le);
     const { error: ue } = await supabase
@@ -494,11 +512,20 @@ export const getCatalog = createServerFn({ method: "GET" })
 export const getMyLoans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+    const { data: member } = await context.supabase
+      .from("members")
+      .select("id")
+      .maybeSingle();
+    const query = context.supabase
       .from("loans")
       .select("id, status, loan_date, due_date, return_date, books(title, code)")
-      .eq("requested_by", context.userId)
       .order("created_at", { ascending: false });
+    if (member) {
+      query.or(`requested_by.eq.${context.userId},member_id.eq.${member.id}`);
+    } else {
+      query.eq("requested_by", context.userId);
+    }
+    const { data, error } = await query;
     if (error) throw dbError(error);
     return data ?? [];
   });
@@ -526,6 +553,8 @@ export const requestLoan = createServerFn({ method: "POST" })
 
     const email = (claims as any)?.email ?? null;
     let memberId: string | null = null;
+
+    // Look up member by email — will fail via RLS for non-staff
     if (email) {
       const { data: m } = await supabase
         .from("members")
@@ -534,34 +563,38 @@ export const requestLoan = createServerFn({ method: "POST" })
         .maybeSingle();
       memberId = m?.id ?? null;
     }
-    if (!memberId) {
+
+    // If no member found, try creating with admin client (service_role) then anon
+    if (!memberId && email) {
       const code = `U-${userId.slice(0, 8)}`;
       const fullName = (claims as any)?.user_metadata?.full_name
         ?? (claims as any)?.user_metadata?.name
         ?? email
         ?? "Usuário";
-      let newM: any = null;
-      let me: any = null;
-      ({ data: newM, error: me } = await supabase
-        .from("members")
-        .upsert({ code, full_name: fullName, email, member_role: "Aluno" }, { onConflict: "code" })
-        .select("id")
-        .maybeSingle());
-      if (me || !newM) {
+      try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        ({ data: newM, error: me } = await supabaseAdmin
+        const { data: newM } = await supabaseAdmin
           .from("members")
           .upsert({ code, full_name: fullName, email, member_role: "Aluno" }, { onConflict: "code" })
           .select("id")
-          .maybeSingle());
-      }
-      if (me || !newM) {
-        const reason = me ? `Erro: ${me.message} (${me.code || "sem código"})` : "Membro não retornado após inserção.";
-        throw new Error(`Não foi possível criar seu cadastro. ${reason}`);
-      }
-      memberId = newM.id;
+          .maybeSingle();
+        memberId = newM?.id ?? null;
+      } catch { /* service_role unavailable, fall through */ }
     }
 
+    // Still no member? Show helpful error
+    if (!memberId) {
+      if (email) {
+        throw new Error(
+          "Seu cadastro de membro ainda não foi criado. "
+          + "Peça a um bibliotecário ou administrador para criá-lo na página Membros, "
+          + "ou entre em contato com a biblioteca.",
+        );
+      }
+      throw new Error("Email não encontrado em sua conta.");
+    }
+
+    // Insert loan with pending status — the RLS policy loans_user_insert allows this
     const { error: loanErr } = await supabase.from("loans").insert({
       member_id: memberId,
       book_id: data.book_id,
@@ -571,16 +604,21 @@ export const requestLoan = createServerFn({ method: "POST" })
       created_by: userId,
     });
     if (loanErr) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error: adminErr } = await supabaseAdmin.from("loans").insert({
-        member_id: memberId,
-        book_id: data.book_id,
-        due_date: data.due_date,
-        status: "pending",
-        requested_by: userId,
-        created_by: userId,
-      });
-      if (adminErr) throw dbError(adminErr);
+      // Fallback for service_role if user client fails
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error: adminErr } = await supabaseAdmin.from("loans").insert({
+          member_id: memberId,
+          book_id: data.book_id,
+          due_date: data.due_date,
+          status: "pending",
+          requested_by: userId,
+          created_by: userId,
+        });
+        if (adminErr) throw new Error(adminErr.message);
+      } catch (e) {
+        throw dbError(loanErr);
+      }
     }
     return { ok: true };
   });
